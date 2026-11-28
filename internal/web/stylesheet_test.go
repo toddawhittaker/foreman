@@ -582,3 +582,377 @@ func TestStylesheetGuardCatchesUndeclaredLayer(t *testing.T) {
 		t.Errorf("want c.css in the wrong layer to fail; got %q", got)
 	}
 }
+
+// cssSubject returns the last compound selector of sel: what the rule styles.
+func cssSubject(sel string) string {
+	start, depth := 0, 0
+	for i := 0; i < len(sel); i++ {
+		switch c := sel[i]; c {
+		case '(', '[':
+			depth++
+		case ')', ']':
+			depth--
+		case ' ', '>', '+', '~':
+			if depth == 0 {
+				start = i + 1
+			}
+		}
+	}
+	return sel[start:]
+}
+
+var cssClassName = regexp.MustCompile(`^-?[A-Za-z_][\w-]*`)
+
+// subjectClasses lists the classes of sel's subject compound. A class inside
+// :is() or :where() counts when it is in the subject of an argument; one
+// inside :not(), :has(), any other function or an attribute selector does
+// not, since the element need not carry it.
+func subjectClasses(sel string) []string {
+	s := cssSubject(strings.TrimSpace(sel))
+	var out []string
+	for i := 0; i < len(s); i++ {
+		switch s[i] {
+		case '.':
+			if m := cssClassName.FindString(s[i+1:]); m != "" {
+				out = append(out, m)
+				i += len(m)
+			}
+		case '[', '(':
+			end := i + 1 + cssEnd(s[i+1:], 0, "])")
+			if s[i] == '(' && (strings.HasSuffix(s[:i], ":is") || strings.HasSuffix(s[:i], ":where")) {
+				for _, arg := range splitTopLevel(s[i+1:min(end, len(s))], ',') {
+					out = append(out, subjectClasses(arg)...)
+				}
+			}
+			i = end
+		}
+	}
+	return out
+}
+
+var cssVarUse = regexp.MustCompile(`var\(\s*(--[\w-]+)`)
+
+// pageRestyles lists each page rule that restyles a shared component, as
+// "file selector": a selector whose subject carries a class some shared
+// part's subject carries, in a rule that sets a property. A custom property
+// counts only when a shared part reads it.
+func pageRestyles(rules []cssRule, isPage func(file string) bool) []string {
+	shared, read := map[string]bool{}, map[string]bool{}
+	for _, r := range rules {
+		if isPage(r.file) {
+			continue
+		}
+		for _, sel := range r.selectors {
+			for _, c := range subjectClasses(sel) {
+				shared[c] = true
+			}
+		}
+		for _, d := range r.decls {
+			for _, m := range cssVarUse.FindAllStringSubmatch(d.Value, -1) {
+				read[m[1]] = true
+			}
+		}
+	}
+	var out []string
+	for _, r := range rules {
+		if !isPage(r.file) || !slices.ContainsFunc(r.decls, func(d cssProperty) bool {
+			return !strings.HasPrefix(d.Name, "--") || read[d.Name]
+		}) {
+			continue
+		}
+		for _, sel := range r.selectors {
+			if slices.ContainsFunc(subjectClasses(sel), func(c string) bool { return shared[c] }) {
+				out = append(out, r.file+" "+sel)
+			}
+		}
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+func isPagePart(file string) bool {
+	return slices.Contains(stylesheetParts, stylesheetPart{file, "pages"})
+}
+
+// A shared look changes in its shared part, never from a page (WORKFLOW,
+// "Where CSS goes"). The list holds the restyles that predate the rule; it
+// only shrinks.
+func TestPagePartsDoNotRestyleSharedComponents(t *testing.T) {
+	got := pageRestyles(stylesheetRules(t), isPagePart)
+	for _, r := range got {
+		if _, ok := pageRestylesToFix[r]; !ok {
+			t.Errorf("%s restyles a shared component from a page part; change the shared part instead (WORKFLOW, \"Where CSS goes\")", r)
+		}
+	}
+	for r := range pageRestylesToFix {
+		if !slices.Contains(got, r) {
+			t.Errorf("%s no longer restyles a shared component; remove it from pageRestylesToFix", r)
+		}
+	}
+}
+
+// The restyle guard catches a page rule on a shared class, and lets a page's
+// own class, a :not() or :has() of a shared class, and an unread custom
+// property pass.
+func TestRestyleGuardCatchesPlantedMistakes(t *testing.T) {
+	rules := append(parseCSS("shared.css", `@layer components {
+.button { color: var(--button-ink); }
+.panel .note { margin: 0; }
+}`), parseCSS("page.css", `@layer pages {
+.x .button { color: red; }
+.x .button-hint, .x .panel { color: red; }
+.mine:not(.button), .mine:has(.button), .button .mine { color: red; }
+:is(.a, .x .note)::after { content: ""; }
+.x .button { --own: 1; }
+.y .button { --button-ink: red; }
+.z .button:not(:hover) {}
+}`)...)
+	got := pageRestyles(rules, func(f string) bool { return f == "page.css" })
+	want := []string{"page.css .x .button", "page.css .y .button", "page.css :is(.a, .x .note)::after"}
+	if !slices.Equal(got, want) {
+		t.Errorf("got restyles %q, want %q", got, want)
+	}
+}
+
+// pageRestylesToFix are the page rules that restyled a shared component when
+// the rule against it came in, as "file selector", each with the issue that
+// moves it into its shared part or a page-only class. Remove an entry when
+// its rule goes; add none.
+var pageRestylesToFix = map[string]string{
+	"pages/design.css .design-menu-open .row-menu__panel":                                                          "#1017",
+	"pages/design.css .design-pane .server-grid > .panel:has(.section-head)":                                       "#1017",
+	"pages/generate.css #newmap-body > .generate > .form-foot":                                                     "#1017",
+	"pages/generate.css #preset-box + .field > .error":                                                             "#1017",
+	"pages/generate.css #preset-box + .field > .hint":                                                              "#1017",
+	"pages/generate.css #preset-box + .field > .inline-row":                                                        "#1017",
+	"pages/generate.css #preset-box .preset-row > :is(.modified, .button)":                                         "#1017",
+	"pages/generate.css #preset-box > .field":                                                                      "#1017",
+	"pages/generate.css #preset-box > .field > .error":                                                             "#1017",
+	"pages/generate.css #preset-box > .field > .inline-row":                                                        "#1017",
+	"pages/generate.css #preset-box > .message":                                                                    "#1017",
+	"pages/generate.css .autoplace > legend .check":                                                                "#1017",
+	"pages/generate.css .autoplace--all > .hint":                                                                   "#1017",
+	"pages/generate.css .autoplace:disabled .step__value":                                                          "#1017",
+	"pages/generate.css .download-prep .message[hidden]":                                                           "#1017",
+	"pages/generate.css .gen-settings > .field:has(#generate-download)":                                            "#1017",
+	"pages/generate.css .gen-settings > .field:has(#generate-name)":                                                "#1017",
+	"pages/generate.css .gen-settings > .field:has(#generate-name) > .error":                                       "#1017",
+	"pages/generate.css .gen-start > #favorite-chooser .inline-row":                                                "#1017",
+	"pages/generate.css .gen-start > #favorite-chooser > .actions":                                                 "#1017",
+	"pages/generate.css .generate > .form-foot":                                                                    "#1017",
+	"pages/generate.css .generate.panel":                                                                           "#1017",
+	"pages/generate.css .hint.mod-origin":                                                                          "#1017",
+	"pages/generate.css .icon-button.large-view__to-starmap":                                                       "#1017",
+	"pages/generate.css .js-on .field__head > .step__value":                                                        "#1017",
+	"pages/generate.css .js-on .mode-panel details > .field":                                                       "#1017",
+	"pages/generate.css .js-on .step > .field__head":                                                               "#1017",
+	"pages/generate.css .js-on .step > .step__value":                                                               "#1017",
+	"pages/generate.css .js-on .step[data-changed] .step__value":                                                   "#1017",
+	"pages/generate.css .js-on .step[data-changed] .step__value::before":                                           "#1017",
+	"pages/generate.css .js-on .step__value":                                                                       "#1017",
+	"pages/generate.css .js-on .step__value::after":                                                                "#1017",
+	"pages/generate.css .js-on :is(#map-settings, #large-settings) .autoplace .step > .field__head":                "#1017",
+	"pages/generate.css .js-on :is(#map-settings, #large-settings) .autoplace .step > .field__head > .step__value": "#1017",
+	"pages/generate.css .js-on :is(#map-settings, #large-settings) .autoplace .step > .field__head > .tip":         "#1017",
+	"pages/generate.css .js-on :is(#map-settings, #large-settings) .autoplace > :is(.autoplace__also, .hint)":      "#1017",
+	"pages/generate.css .large-view__head > .hint.large-view__keys":                                                "#1017",
+	"pages/generate.css .large-view__toast .message":                                                               "#1017",
+	"pages/generate.css .large-view__toast .message::before":                                                       "#1017",
+	"pages/generate.css .large-view__toast > .icon-button":                                                         "#1017",
+	"pages/generate.css .large-view__wait .working__text":                                                          "#1017",
+	"pages/generate.css .large-view__wait > .working":                                                              "#1017",
+	"pages/generate.css .large-view__zoom > .icon-button":                                                          "#1017",
+	"pages/generate.css .large-view__zoom > .icon-button + .icon-button":                                           "#1017",
+	"pages/generate.css .mod-settings > .panel":                                                                    "#1017",
+	"pages/generate.css .mod-settings > .panels > .panel":                                                          "#1017",
+	"pages/generate.css .mod-settings-group > .setting-row__body":                                                  "#1017",
+	"pages/generate.css .mod-settings-group.setting-row":                                                           "#1017",
+	"pages/generate.css .mod-settings-values.setting-row__body":                                                    "#1017",
+	"pages/generate.css .mod-settings.htmx-request .wait":                                                          "#1017",
+	"pages/generate.css .mode > .hint":                                                                             "#1017",
+	"pages/generate.css .mode-panel details > .field":                                                              "#1017",
+	"pages/generate.css .mode-panel input.mono":                                                                    "#1017",
+	"pages/generate.css .mode-panel textarea.mono":                                                                 "#1017",
+	"pages/generate.css .ms-group .inline-row":                                                                     "#1017",
+	"pages/generate.css .picture-actions #preview-chart-offer > .button":                                           "#1017",
+	"pages/generate.css .picture-actions #preview-chart-offer > .tip":                                              "#1017",
+	"pages/generate.css .preview-status .working__text":                                                            "#1017",
+	"pages/generate.css .step__value":                                                                              "#1017",
+	"pages/generate.css .version-fields > .disclosure":                                                             "#1017",
+	"pages/generate.css .version-fields > .field:has(#generate-space-age)":                                         "#1017",
+	"pages/generate.css .version-fields > .field:has(#generate-version-select)":                                    "#1017",
+	"pages/generate.css .work-slot.htmx-request":                                                                   "#1017",
+	"pages/generate.css :has(> #preset-box + .field) > :is(#preset-box, #preset-box + .field)":                     "#1017",
+	"pages/generate.css :is(.generate, .mod-settings-group) .field":                                                "#1017",
+	"pages/generate.css :is(.generate, .mod-settings-group) .field > :is(.hint, label, legend)":                    "#1017",
+	"pages/generate.css :is(.generate, .mod-settings-group) .field > label.check + .hint":                          "#1017",
+	"pages/generate.css :is(.preview-status, .large-view__wait) .working__bar":                                     "#1017",
+	"pages/generate.css :is(.preview-status, .large-view__wait) > .working":                                        "#1017",
+	"pages/mods.css #main .mods-bar .mods-find .inline-row":                                                        "#1017",
+	"pages/mods.css #main section[data-view=\"installed\"].panel > .group__head":                                   "#1017",
+	"pages/mods.css #main section[data-view=\"installed\"].panel > .group__head > .group__action:not(:empty)":      "#1017",
+	"pages/mods.css #main section[data-view=\"installed\"].panel > :is(.group__head, #mod-status)":                 "#1017",
+	"pages/mods.css .button--icon.plan-panel__remove":                                                              "#1017",
+	"pages/mods.css .button--icon.plan-panel__remove::after":                                                       "#1017",
+	"pages/mods.css .button--icon.plan-panel__remove::before":                                                      "#1017",
+	"pages/mods.css .button--icon.plan-panel__remove:hover":                                                        "#1017",
+	"pages/mods.css .button--icon.plan-panel__remove:hover::after":                                                 "#1017",
+	"pages/mods.css .group__head:has(> #mod-update-all)":                                                           "#1017",
+	"pages/mods.css .hit__act .badge":                                                                              "#1017",
+	"pages/mods.css .mod-actions .button":                                                                          "#1017",
+	"pages/mods.css .mod-actions .button--icon.mod-remove":                                                         "#1017",
+	"pages/mods.css .mod-actions .button:not(.row-menu__toggle)":                                                   "#1017",
+	"pages/mods.css .mod-line > .mod-ver":                                                                          "#1017",
+	"pages/mods.css .mod-list .badge":                                                                              "#1017",
+	"pages/mods.css .mod-list .mod-actions .button":                                                                "#1017",
+	"pages/mods.css .mod-list .mod-actions .button:not(.row-menu__toggle)":                                         "#1017",
+	"pages/mods.css .mod-list .mod-actions > .row-menu":                                                            "#1017",
+	"pages/mods.css .mod-list .row-menu .row-menu__item":                                                           "#1017",
+	"pages/mods.css .mod-list .row-menu .row-menu__item:hover":                                                     "#1017",
+	"pages/mods.css .mod-list .row-menu > summary.row-menu__toggle":                                                "#1017",
+	"pages/mods.css .mod-list .row-menu > summary.row-menu__toggle:hover":                                          "#1017",
+	"pages/mods.css .mod-list .row-menu[open] > summary.row-menu__toggle":                                          "#1017",
+	"pages/mods.css .mod-list td .mod-actions .button":                                                             "#1017",
+	"pages/mods.css .mod-list td .mod-actions .row-menu__panel":                                                    "#1017",
+	"pages/mods.css .mod-list td .mod-actions > .row-menu":                                                         "#1017",
+	"pages/mods.css .mod-rail .split__rail .actions > .button":                                                     "#1017",
+	"pages/mods.css .mod-rail[open]:not([data-wide]) > .split__rail":                                               "#1017",
+	"pages/mods.css .mod-ver":                                                                                      "#1017",
+	"pages/mods.css .mods-bar .mods-find form .field":                                                              "#1017",
+	"pages/mods.css .mods-find__notes > .hint":                                                                     "#1017",
+	"pages/mods.css .mods-main > section:has(> #sync-heading) > .actions":                                          "#1017",
+	"pages/mods.css .mods-main > section:has(> #sync-heading) > :is(.sync-reason, #sync-state, .empty)":            "#1017",
+	"pages/mods.css .plan-panel__clear .button--quiet":                                                             "#1017",
+	"pages/mods.css .plan-panel__clear .button--quiet:hover":                                                       "#1017",
+	"pages/mods.css .plan-panel__go .button":                                                                       "#1017",
+	"pages/mods.css .plan-tree .mod-ver":                                                                           "#1017",
+	"pages/mods.css .result-pager .button":                                                                         "#1017",
+	"pages/mods.css .split--mods > .panel":                                                                         "#1017",
+	"pages/mods.css .split.split--mods":                                                                            "#1017",
+	"pages/server.css #act-update-all > .count":                                                                    "#1017",
+	"pages/server.css #main > .status-card.plate.card":                                                             "#1017",
+	"pages/server.css #server-title .state":                                                                        "#1017",
+	"pages/server.css #server-title > .state":                                                                      "#1017",
+	"pages/server.css #server-title > .state::before":                                                              "#1017",
+	"pages/server.css .console-form > .required-note":                                                              "#1017",
+	"pages/server.css .console-past > summary .count":                                                              "#1017",
+	"pages/server.css .console-row .button":                                                                        "#1017",
+	"pages/server.css .danger-row > .hint":                                                                         "#1017",
+	"pages/server.css .facts.stat-grid":                                                                            "#1017",
+	"pages/server.css .facts.stat-grid > .stat":                                                                    "#1017",
+	"pages/server.css .facts.stat-grid > .stat:first-child":                                                        "#1017",
+	"pages/server.css .facts.stat-grid > .stat:nth-child(odd)":                                                     "#1017",
+	"pages/server.css .facts.stat-grid dd .unit":                                                                   "#1017",
+	"pages/server.css .join .button--quiet":                                                                        "#1017",
+	"pages/server.css .log-frame > .button":                                                                        "#1017",
+	"pages/server.css .log-frame > .button[hidden]":                                                                "#1017",
+	"pages/server.css .player-actions .badge":                                                                      "#1017",
+	"pages/server.css .player-actions > .actions":                                                                  "#1017",
+	"pages/server.css .player-actions:not([open]) > .actions":                                                      "#1017",
+	"pages/server.css .recent-snaps > .actions":                                                                    "#1017",
+	"pages/server.css .server-actions:has(> :is(.server-act--restart, [data-design-icon=\"restart\"])):has(> :is(.server-act--stop, [data-design-icon=\"stop\"])) :is(.button, :is(.server-force-stop, .design-force-stop))": "#1017",
+	"pages/server.css .server-grid > .panel":                                                             "#1017",
+	"pages/server.css .server-grid > .shortcuts.card":                                                    "#1017",
+	"pages/server.css .server-players tbody td.num":                                                      "#1017",
+	"pages/server.css .server-players td > .hint":                                                        "#1017",
+	"pages/server.css .server-players td.num":                                                            "#1017",
+	"pages/server.css .shortcuts.card":                                                                   "#1017",
+	"pages/server.css .status-card .facts--inline":                                                       "#1017",
+	"pages/server.css .status-card .facts--inline dd .unit":                                              "#1017",
+	"pages/server.css .status-card.plate":                                                                "#1017",
+	"pages/server.css .status-card.plate .facts-block > [sse-swap=\"facts\"] > .facts.stat-grid":         "#1017",
+	"pages/server.css .status-card.plate .facts-block > [sse-swap=\"facts\"] > .facts.stat-grid > .stat": "#1017",
+	"pages/server.css .status-card.plate > .plate__band":                                                 "#1017",
+	"pages/server.css .status-card.plate::before":                                                        "#1017",
+	"pages/server.css .steps > li > .working":                                                            "#1017",
+	"pages/server.css .terminal #console-panel > .console-form > .hint":                                  "#1017",
+	"pages/server.css .terminal .log-frame > .button":                                                    "#1017",
+	"pages/server.css .terminal .log-frame > .button:not(:active)":                                       "#1017",
+	"pages/server.css .terminal .log-frame > .button[hidden]":                                            "#1017",
+	"pages/server.css .terminal > .panel":                                                                "#1017",
+	"pages/server.css .terminal__log > .hint":                                                            "#1017",
+	"pages/server.css .terminal__log > .section-head":                                                    "#1017",
+	"pages/server.css :is(.button--icon, .server-actions :is(a, button), :is(.server-force-stop, .design-force-stop), .page-head--row .button)::before": "#1017",
+	"pages/server.css table:has(.player-actions) th.num":                                                      "#1017",
+	"pages/server.css tr:has(> td > .player-actions) > td.num":                                                "#1017",
+	"pages/server.css tr:has(> td > .player-actions[open]) > td.num":                                          "#1017",
+	"pages/settings.css #connected-heading + .hint":                                                           "#1017",
+	"pages/settings.css #settings-network details > .field + .field":                                          "#1017",
+	"pages/settings.css .audit-filter > .actions":                                                             "#1017",
+	"pages/settings.css .audit-filter > .field":                                                               "#1017",
+	"pages/settings.css .audit-table .audit-token .badge":                                                     "#1017",
+	"pages/settings.css .audit-token .badge":                                                                  "#1017",
+	"pages/settings.css .form-foot:has(> #settings-unsaved:not(:empty))":                                      "#1017",
+	"pages/settings.css .panel.setting-row:has(> .setting-row__head #public-mods-shares-heading)":             "#1017",
+	"pages/settings.css .scope-card > .hint":                                                                  "#1017",
+	"pages/settings.css .setting-check > .hint":                                                               "#1017",
+	"pages/settings.css .settings > .required-note":                                                           "#1017",
+	"pages/settings.css .settings > fieldset > .setting-row__body":                                            "#1017",
+	"pages/settings.css .settings > fieldset > .setting-row__body:not(:has(> .field--short + .field--short))": "#1017",
+	"pages/settings.css .settings-aside > .actions":                                                           "#1017",
+	"pages/settings.css .settings-main .setting-row__body":                                                    "#1017",
+	"pages/settings.css .settings-main > section.panel[hidden]":                                               "#1017",
+	"pages/settings.css .split.token-created-layout":                                                          "#1017",
+	"pages/settings.css .token-card > .actions":                                                               "#1017",
+	"pages/settings.css .token-card > .facts":                                                                 "#1017",
+	"pages/settings.css .token-create > .field":                                                               "#1017",
+	"pages/settings.css .token-created .exchange":                                                             "#1017",
+	"pages/settings.css .token-created .field":                                                                "#1017",
+	"pages/settings.css .token-created .field > .message":                                                     "#1017",
+	"pages/settings.css .token-list .button--remove:not(:hover, :focus-visible)":                              "#1017",
+	"pages/settings.css .token-list .button--risky:not(:hover, :focus-visible)":                               "#1017",
+	"pages/settings.css .token-list--users > .token-card > .actions":                                          "#1017",
+	"pages/settings.css .token-list--users > .token-card > .facts":                                            "#1017",
+	"pages/settings.css .token-use .exchange":                                                                 "#1017",
+	"pages/settings.css .token-use .field":                                                                    "#1017",
+	"pages/settings.css .token-use > .message":                                                                "#1017",
+	"pages/settings.css .webhook-list > li > .facts ~ .actions":                                               "#1017",
+	"pages/settings.css .webhook-list > li > .facts ~ .actions .button":                                       "#1017",
+	"pages/settings.css .webhook-list__title .ident":                                                          "#1017",
+	"pages/settings.css .webhook-preset > .hint":                                                              "#1017",
+	"pages/settings.css :is(.token-use, .token-created) .copy-field":                                          "#1017",
+	"pages/settings.css :is(.token-use, .token-created) .copy-field > .button":                                "#1017",
+	"pages/settings.css form.general-grid.setting-rows":                                                       "#1017",
+	"pages/settings.css form.general-grid.setting-rows .setting-row__head .hint":                              "#1017",
+	"pages/settings.css form.general-grid.setting-rows > .form-foot":                                          "#1017",
+	"pages/settings.css form.general-grid.setting-rows > .required-note":                                      "#1017",
+	"pages/settings.css form.general-grid.setting-rows > .setting-row":                                        "#1017",
+	"pages/worlds.css #archived-worlds .worlds > li > .facts ~ .actions":                                      "#1017",
+	"pages/worlds.css #archived-worlds .worlds > li > .facts ~ .actions .button":                              "#1017",
+	"pages/worlds.css #favorite-chooser > .actions":                                                           "#1017",
+	"pages/worlds.css #main .save-list > tbody > tr > td:is(.num, :nth-child(3))":                             "#1017",
+	"pages/worlds.css #main .save-list > tbody > tr:not(:has(> td.save-load)) > td.num":                       "#1017",
+	"pages/worlds.css #main .world-layout__side .inline-row":                                                  "#1017",
+	"pages/worlds.css #main :is(.worlds > li > .facts, .worlds-head__facts)":                                  "#1017",
+	"pages/worlds.css #save-players-table td.num":                                                             "#1017",
+	"pages/worlds.css .favorite__body > .actions":                                                             "#1017",
+	"pages/worlds.css .favorite__body > .actions > .button":                                                   "#1017",
+	"pages/worlds.css .import-upload > .actions":                                                              "#1017",
+	"pages/worlds.css .import-upload > .field":                                                                "#1017",
+	"pages/worlds.css .import-upload > .field.dropzone":                                                       "#1017",
+	"pages/worlds.css .live-chip > .badge":                                                                    "#1017",
+	"pages/worlds.css .live-chip > .state":                                                                    "#1017",
+	"pages/worlds.css .save-list .button":                                                                     "#1017",
+	"pages/worlds.css .save-list th.visually-hidden":                                                          "#1017",
+	"pages/worlds.css .save-name > .badge":                                                                    "#1017",
+	"pages/worlds.css .select-bar > .button":                                                                  "#1017",
+	"pages/worlds.css .select-bar ~ .actions":                                                                 "#1017",
+	"pages/worlds.css .snapshot-list .check":                                                                  "#1017",
+	"pages/worlds.css .snapshot-list .row-actions .button":                                                    "#1017",
+	"pages/worlds.css .snapshot-list td > .button":                                                            "#1017",
+	"pages/worlds.css .snapshot-list:has(.row-actions) .row-actions .button":                                  "#1017",
+	"pages/worlds.css .snapshot-list:has(.row-actions) .row-actions .button--icon":                            "#1017",
+	"pages/worlds.css .snapshot-list:has(.row-actions) td:first-child > .check":                               "#1017",
+	"pages/worlds.css .snapshot-list:has(.row-actions) td:first-child > .hint":                                "#1017",
+	"pages/worlds.css .snapshot-list:has(.row-actions) td:first-child > .row-actions":                         "#1017",
+	"pages/worlds.css .title-row > .live-chip > .badge":                                                       "#1017",
+	"pages/worlds.css .title-row > .live-chip > .state":                                                       "#1017",
+	"pages/worlds.css .title-row:has(> .live-chip) > h1 > .badge--active":                                     "#1017",
+	"pages/worlds.css .world-layout__side .exchange .copy-field--block > textarea.exchange__value":            "#1017",
+	"pages/worlds.css .world-layout__side .exchange .copy-field--block > textarea.exchange__value:focus":      "#1017",
+	"pages/worlds.css .world-share__item .inline-row":                                                         "#1017",
+	"pages/worlds.css .worlds > li > .facts":                                                                  "#1017",
+	"pages/worlds.css .worlds > li > .facts ~ .actions":                                                       "#1017",
+	"pages/worlds.css .worlds > li > .facts ~ .actions .button":                                               "#1017",
+	"pages/worlds.css :is(.import-upload, .import-folder) > details.disclosure":                               "#1017",
+}

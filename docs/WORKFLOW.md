@@ -366,6 +366,28 @@ merges: the agent may be needed again for a CI fix.
 - A value that must match in two files or processes is one exported
   constant, not two values and a comment.
 
+## Where CSS goes
+
+The stylesheet's parts sit under `internal/web/static/css/` (DESIGN 11).
+Tokens, base, buttons, tables, plates, forms, messages, controls and shell
+are shared parts: they say how a component looks everywhere. The files
+under `pages/` are page parts.
+
+- To change how a shared component looks, I edit its shared part. I don't
+  add a page rule that overrides it, even when only one page shows the
+  problem today.
+- A page rule is only for something only that page has. It carries a
+  one-line comment saying why the page needs it.
+- No page rule restyles a shared component: a rule in a page part whose
+  selector ends on a shared class and sets a property is a restyle.
+- This holds in a UI hill climb too. The climb may change what the spec
+  asks for, but not this structure, and its brief cites this section.
+
+`TestPagePartsDoNotRestyleSharedComponents` in
+`internal/web/stylesheet_test.go` enforces it. The restyles that predate the
+rule are listed there in `pageRestylesToFix`, owned by issue #1017; that
+list only shrinks.
+
 ## Pull requests
 
 Every pull request cites the SPEC.md and STACK.md sections it serves and
