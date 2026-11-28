@@ -42,7 +42,7 @@ test("the Mods tab of an Unfinished world has the step bar and skips to step 3",
   await expect(steps(page).getByRole("listitem").nth(2)).toHaveText("3. Mod settings (none)");
   await checkPage(page);
   // The step ends with the wizard's footer: Back to step 1 first, the way on as the primary button (SPEC 5.6).
-  const foot = page.locator(".flow-foot");
+  const foot = page.locator(".form-foot:has(#flow-back)");
   await expect(foot.getByRole("link")).toHaveText(["Back to the world", "Next: Map settings"]);
   await expect(foot.getByRole("link", { name: "Back to the world" })).toHaveAttribute("href", `/worlds/${id}`);
   await expect(foot.getByRole("link", { name: "Next: Map settings" })).toHaveClass(/button--primary/);
@@ -69,7 +69,7 @@ test("step 2's Next reviews the plan, and the review's Next installs it and goes
   await page.goto(`/worlds/${id}/mods`);
   await page.getByLabel("Mod name").fill("fp-flow");
   await page.getByRole("button", { name: "Add fp-flow to the plan" }).click();
-  const foot = page.locator(".flow-foot");
+  const foot = page.locator(".form-foot:has(#flow-back)");
   // The footer's main button now reviews the plan, and the panel has no Review of its own.
   const next = foot.getByRole("link", { name: "Next: Review 1 mod" });
   await expect(next).toHaveClass(/button--primary/);
@@ -156,8 +156,8 @@ test("a skip or Back with a plan keeps the plan for Continue", async ({ page, fo
   await page.goto(`/worlds/${id}/mods`);
   await page.getByLabel("Mod name").fill("fp-kept");
   await page.getByRole("button", { name: "Add fp-kept to the plan" }).click();
-  await page.locator(".flow-foot").getByRole("link", { name: "Next: Review 1 mod" }).click();
-  await page.locator(".flow-foot").getByRole("link", { name: "Back to the mods" }).click();
+  await page.locator(".form-foot:has(#flow-back)").getByRole("link", { name: "Next: Review 1 mod" }).click();
+  await page.locator(".form-foot:has(#flow-back)").getByRole("link", { name: "Back to the mods" }).click();
   await expect(page).toHaveURL(`/worlds/${id}/mods`);
   await expect(page.locator("#plan-panel .plan-tree__pick")).toHaveCount(1);
   await page.getByRole("link", { name: "Skip to map settings" }).click();
@@ -166,7 +166,7 @@ test("a skip or Back with a plan keeps the plan for Continue", async ({ page, fo
   await page.getByRole("link", { name: "Continue setting up Kept world" }).click();
   await expect(page).toHaveURL(`/worlds/${id}/mods`);
   await expect(page.locator("#plan-panel .plan-tree__pick")).toHaveCount(1);
-  await expect(page.locator(".flow-foot").getByRole("link", { name: "Next: Review 1 mod" })).toBeVisible();
+  await expect(page.locator(".form-foot:has(#flow-back)").getByRole("link", { name: "Next: Review 1 mod" })).toBeVisible();
 });
 
 test("a world with a save has no step bar on its Mods tab or review", async ({ page, foreman, fakeGame, fakePortal }) => {

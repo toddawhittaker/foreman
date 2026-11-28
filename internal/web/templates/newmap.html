@@ -178,13 +178,15 @@
 <div id="preset-box" class="mode-panel">
   <div class="field">
     <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
+    {{- /* The select fills its column like every field; "[modified]" and Reset or Undo take the line
+         under it, which keeps its height whether or not they show, so nothing below moves (DESIGN 6, 8.6). */}}
+    <select id="generate-preset" name="preset" hx-post="{{.RefreshPath}}" hx-trigger="change" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary" hx-swap="outerHTML" hx-sync="this:replace"
+      aria-describedby="preset-modified{{if not .PresetError.IsZero}} generate-preset-error{{end}}"{{if not .PresetError.IsZero}} aria-invalid="true"{{end}}>
+      {{- range .Presets}}
+      <option value="{{.}}"{{if eq . $.Preset}} selected{{end}}>{{msg ($.PresetMsg .)}}</option>
+      {{- end}}
+    </select>
     <div class="inline-row preset-row">
-      <select id="generate-preset" name="preset" hx-post="{{.RefreshPath}}" hx-trigger="change" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary" hx-swap="outerHTML" hx-sync="this:replace"
-        aria-describedby="preset-modified{{if not .PresetError.IsZero}} generate-preset-error{{end}}"{{if not .PresetError.IsZero}} aria-invalid="true"{{end}}>
-        {{- range .Presets}}
-        <option value="{{.}}"{{if eq . $.Preset}} selected{{end}}>{{msg ($.PresetMsg .)}}</option>
-        {{- end}}
-      </select>
       <span class="modified" id="preset-modified" data-word="{{t "mapgen.preset.modified"}}">{{if .Modified}}{{t "mapgen.preset.modified"}}{{end}}</span>
       <button type="submit" class="button button--quiet" id="preset-reset" name="reset" value="1" formaction="{{.RefreshPath}}"
         hx-post="{{.RefreshPath}}" hx-target="#map-settings" hx-select="#map-settings" hx-select-oob="#ach-summary,#need-summary,#generate-preset" hx-swap="outerHTML"{{if .AtDefaults}} hidden{{end}}>{{t "mapgen.preset.reset"}}</button>

@@ -71,7 +71,7 @@
 <p>{{t "mods.plan.nothing"}}</p>
 {{- if .StepFoot}}
 {{- /* Step 2's footer: nothing to install, so Next goes straight on (SPEC 5.6). */}}
-<div class="actions flow-foot">
+<div class="actions form-foot">
   {{template "genflow-back" .Back}}
   <a href="{{.NextPath}}" class="button button--primary" id="plan-next">{{msg .NextLabel}}</a>
 </div>
@@ -240,7 +240,8 @@
     <div class="actions">
       <a href="{{.ModsPath}}">{{t "mods.plan.cancel"}}</a>
       {{- if .CanApply}}
-      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply">{{msg .Button}}{{if not .ButtonRecommended.IsZero}} {{msg .ButtonRecommended}}{{end}}</button>
+      {{- /* data-room, the label's longest words while an offer may change it, holds the button's box, so Cancel before it never moves (DESIGN 6). */}}
+      <button type="submit" class="button {{if .Danger}}button--danger{{else}}button--primary{{end}}" id="act-apply"{{with .ButtonRoom}} data-room="{{range $i, $m := .}}{{if $i}} {{end}}{{msg $m}}{{end}}"{{end}}><span data-label>{{msg .Button}}{{if not .ButtonRecommended.IsZero}} {{msg .ButtonRecommended}}{{end}}</span></button>
       {{- end}}
       {{- /* The step's own action comes first; skipping it is the secondary way on (SPEC 5.6). */}}
       {{- if .InFlow}}<a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>{{end}}
@@ -249,7 +250,7 @@
     </div>
     {{- if .StepFoot}}
     {{- /* Step 2's footer: Next installs the plan as Install would, with the same checks and snapshot, then goes on to step 3 (SPEC 5.6). While a conflict stands there is no Next. */}}
-    <div class="actions flow-foot">
+    <div class="actions form-foot">
       {{template "genflow-back" .Back}}
       <a href="{{.NextPath}}" id="plan-skip">{{t "mods.flow.skip"}}</a>
       {{- if .CanApply}}

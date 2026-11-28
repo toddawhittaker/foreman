@@ -91,7 +91,7 @@ test("step 2's footer on the Mods tab never covers the focused control", { tag: 
   await page.locator("#generate-button").click();
   await expect(page).toHaveURL(/\/worlds\/footer\/mods/);
   await page.setViewportSize({ width: 320, height: 480 });
-  await tabsClearOf(page, await markBar(page.locator(".flow-foot")));
+  await tabsClearOf(page, await markBar(page.locator(".form-foot:has(#flow-back)")));
 });
 
 test("a settings save bar never covers the focused control", { tag: "@looks" }, async ({ page, foreman }) => {

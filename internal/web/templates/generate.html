@@ -33,7 +33,7 @@
     {{- end}}
   </div>
   {{- else}}
-  <p class="hint">{{t "favorites.start.none"}}</p>
+  {{template "empty" (empty "worlds" (t "favorites.start.none") "favorite-chooser-empty")}}
   {{- if not .Form.FavoriteError.IsZero}}
   <p class="error" id="favorite-choice-error"><strong>{{t "common.error.label"}}</strong> {{msg .Form.FavoriteError}}</p>
   {{- end}}
