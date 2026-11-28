@@ -34,10 +34,14 @@ test.describe("with the fake game", () => {
     await expect(page.locator("#pr-alice")).toBeVisible(live);
     await page.getByRole("link", { name: "Stop server" }).click();
     await page.getByRole("button", { name: "Stop server" }).click();
+    // Cancel stop lands on the page after the admin's own action; once its
+    // toast shows, the toast takes the parameter out of the address, so a
+    // reload shows it no more (DESIGN 6, "Toasts").
+    const landed = page.waitForResponse((r) => new URL(r.url()).pathname === "/" && new URL(r.url()).search === "?result=1");
     await page.getByRole("button", { name: "Cancel stop" }).click();
-
-    await expect(page).toHaveURL("/?result=1");
+    await landed;
     await expect(done(page)).toContainText("The stop was canceled.", live);
+    await expect(page).toHaveURL("/");
     await expect(page.locator("#announcer")).toContainText("The stop was canceled.");
     // The live stream's first update replaces the plate; nothing takes focus.
     await page.waitForTimeout(1000);

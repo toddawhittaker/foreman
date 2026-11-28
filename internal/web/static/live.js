@@ -72,6 +72,15 @@
   // came; when there was none, the stored value is empty and the next page
   // says the standard sentence in its own language.
   const movedKey = "foreman-moved";
+  // The load a page after a switch goes on from ("moved") counts once, on
+  // the server's answer, so it leaves the address at once.
+  {
+    const here = new URL(location.href);
+    if (here.searchParams.has("moved")) {
+      here.searchParams.delete("moved");
+      history.replaceState(history.state, "", here.pathname + here.search + here.hash);
+    }
+  }
   document.addEventListener("htmx:sseMessage", (e) => {
     if (e.target.getAttribute("sse-swap") !== "moved") return;
     try {
