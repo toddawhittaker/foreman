@@ -558,6 +558,14 @@ frame (7.4).
 
 ## 6. Page layout
 
+### Controls stay put
+
+A control keeps its box when something else on the page appears, hides,
+changes length or redraws: a working bar, a note, a count, a toast or a
+picture. Content that grows does so below the control that caused it, in
+room the page already holds where it can. The same thing has one look and
+one place across its states and its sibling pages.
+
 ### Shell
 
 ```html
