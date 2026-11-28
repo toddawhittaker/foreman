@@ -794,8 +794,7 @@ time[data-age-only] .time-short {
   white-space: nowrap;
 }
 
-.live-chip > .badge,
-.title-row > .live-chip > .badge {
+.live-chip > .badge {
   padding: 0.125rem 0.625rem;
   background: transparent;
   border: 0;
@@ -804,27 +803,12 @@ time[data-age-only] .time-short {
   letter-spacing: 0;
 }
 
-.live-chip > .state,
-.title-row > .live-chip > .state {
+.live-chip > .state {
   padding: 0.125rem var(--space-3) 0.125rem var(--space-2);
   border: 0;
   border-inline-start: var(--border-width) solid var(--color-border);
   border-radius: 0;
   font-size: inherit;
-}
-
-/* Where the chip stands by a world's heading, the heading's own Active badge
-   is kept for screen readers only. */
-.title-row:has(> .live-chip) > h1 > .badge--active {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  margin: 0;
-  padding: 0;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-  border: 0;
 }
 
 .world-share__item {

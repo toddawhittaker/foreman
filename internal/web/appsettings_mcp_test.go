@@ -19,8 +19,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// Gate tests for set_foreman_settings (SPEC 21.8, plan ruling 10) and the
-// upload limits it sets (SPEC 14.6, 14.10, plan rulings 11 and 16) that
+// Gate tests for set_foreman_settings (SPEC 21.8) and the
+// upload limits it sets (SPEC 14.6, 14.10) that
 // appsettings_test.go and settingsreach_test.go leave out.
 
 // SPEC 21.8, 14.19: a code stands for the exact changes it previewed. A
@@ -46,7 +46,7 @@ func TestMCPSetForemanSettingsCodeIsForItsValues(t *testing.T) {
 	}
 }
 
-// SPEC 21.8, ruling 10: a confirm refused because a value moved spends its
+// SPEC 21.8: a confirm refused because a value moved spends its
 // code, so moving the value back does not make the old code good again;
 // and when the moved value is the one being changed, the fresh preview
 // starts from the new value.
@@ -72,7 +72,7 @@ func TestMCPSetForemanSettingsMovedSpendsTheCode(t *testing.T) {
 	}
 }
 
-// SPEC 13.1, rulings 4, 11 and 12: each setting takes its whole range, ends
+// SPEC 13.1: each setting takes its whole range, ends
 // included, and nothing outside it: one past either end, a negative, a
 // fraction or a huge number is refused with no code.
 func TestMCPSetForemanSettingsRangeEnds(t *testing.T) {
@@ -141,7 +141,7 @@ func (zeroReader) Read(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// SPEC 14.6, ruling 11: a limit lowered through set_foreman_settings holds
+// SPEC 14.6: a limit lowered through set_foreman_settings holds
 // for the very next upload of a save and of a mod. The server checks the
 // size itself: an upload one byte over the new limit is refused as too
 // large, and one sent chunked, with no size declared, is refused too, so
@@ -191,7 +191,7 @@ func (p *limitSpy) Download(ctx context.Context, user, token string, r modportal
 	return p.ModPortal.Download(ctx, user, token, r, dst, maxBytes)
 }
 
-// SPEC 14.10, ruling 16: a mod change downloads under the mod upload limit
+// SPEC 14.10: a mod change downloads under the mod upload limit
 // as it stands when the change runs, so a portal file over a lowered limit
 // is refused and nothing is placed.
 func TestPortalDownloadOverTheLoweredModLimitIsRefused(t *testing.T) {

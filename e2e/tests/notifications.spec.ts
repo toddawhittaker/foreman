@@ -46,7 +46,9 @@ test.describe("with a secret key", () => {
 
     await page.getByLabel("Webhook address").fill(discordURL);
     await page.getByRole("button", { name: "Add webhook" }).click();
-    await expect(page).toHaveURL(/\/settings\/notifications\?done=added/);
+    // The toast came from the address, which drops its parameter (SPEC 17.21).
+    await expect(page.locator("#toasts .toast--success")).toBeVisible();
+    await expect(page).toHaveURL(/\/settings\/notifications$/);
     await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Added the Discord webhook to discord.com.");
     await expect(page.locator("#notify-state")).toHaveText("1 webhook gets messages.");
     const row = page.locator("#webhook-1");

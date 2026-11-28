@@ -53,7 +53,7 @@ func TestCrashedMod(t *testing.T) {
 			"Error while running event fake-planet::on_init()",
 			"__flib__/data-util.lua:12: attempt to index a nil value",
 		}, libraryTraceback...), "fake-planet"},
-		// Issue 965's own text: Even Distribution fails in on_init, and the
+		// The reported crash's own text: Even Distribution fails in on_init, and the
 		// traceback's first mod frame is flib's.
 		{"issue 965's control-stage error", []string{
 			`   1.277 Error ServerMultiplayerManager.cpp:85: MultiplayerManager failed: "The mod Even Distribution (2.1.0) caused a non-recoverable error.`,
@@ -183,7 +183,7 @@ func crashRun(t *testing.T, log []string, code int) error {
 	return r.result(ch).err
 }
 
-// Issue 965: a run that fails in the game is kept until the world's mods
+// SPEC 5.6: a run that fails in the game is kept until the world's mods
 // change, so a page load never runs the game again; a change of mods runs it.
 func TestModSettingsFailureKeptUntilModsChange(t *testing.T) {
 	r := newModSettingsRig(t)

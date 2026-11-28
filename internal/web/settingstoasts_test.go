@@ -147,3 +147,31 @@ func TestAccountReplaceFormOrder(t *testing.T) {
 		t.Errorf("the Required note at %d, the retype note at %d", note, retype)
 	}
 }
+
+// DESIGN 6, "Toasts", "Shown once" (SPEC 17.21): a Settings toast built from
+// the address names the parameters it came from, so toast.js drops them and
+// a reload shows nothing. An error answers a post, so it names none.
+func TestSettingsToastsNameTheParametersTheyCameFrom(t *testing.T) {
+	for _, c := range []struct {
+		page Page
+		drop string
+	}{
+		{GeneralPage{Saved: true}, "done"},
+		{SchedulePage{Saved: true}, "done"},
+		{NotificationsPage{Done: i18n.M("notify.done.added", "preset", "Discord", "host", "discord.com")}, "done preset host"},
+		{PublicModsSettingsPage{Done: "on"}, "done"},
+		{APITokensPage{Done: "revoked", DoneName: "laptop"}, "done name"},
+		{APITokensPage{Done: "api-off"}, "done name"},
+		{UsersPage{Done: "deleted", MyKind: "password"}, "done"},
+		{AccountPage{Done: i18n.M("account.done.saved")}, "done"},
+	} {
+		region := toastRegion(pageHTML(t, c.page))
+		if !strings.Contains(region, `data-toast data-drop="`+c.drop+`"`) {
+			t.Errorf("%T: toast does not drop %q: %q", c.page, c.drop, region)
+		}
+	}
+	region := toastRegion(pageHTML(t, AccountPage{Error: i18n.M("account.error.nokey")}))
+	if strings.Contains(region, "data-drop") {
+		t.Errorf("an error toast drops a parameter: %q", region)
+	}
+}

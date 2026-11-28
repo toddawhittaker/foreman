@@ -205,7 +205,7 @@ test("the Console's find that matches nothing moves no control and no line", asy
   await setUp(page, foreman, fakeGame!);
   await start(page);
   await fakeGame!.call("/join", { name: container, player: "first" });
-  // The count has a row of its own, kept while it is empty, so it is in too.
+  // The count keeps its room while it is empty, so it is in too.
   const parts = ".log-tools > *, .terminal .log-frame > .log, #command, #send";
   await each(page, async (label) => {
     await page.goto("/console");

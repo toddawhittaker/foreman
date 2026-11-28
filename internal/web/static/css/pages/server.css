@@ -464,7 +464,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 @media (forced-colors: active) {
   /* Line icons are masks painted with a background, which forced colours
      replace with the page colour; paint them in the system colours instead. */
-  :is(.button--icon, .server-actions :is(a, button), :is(.server-force-stop, .design-force-stop), .page-head--row .button)::before {
+  :is(.button--icon, .server-actions :is(a, button), :is(.server-force-stop, .design-force-stop))::before {
     forced-color-adjust: none;
     background: ButtonText;
   }

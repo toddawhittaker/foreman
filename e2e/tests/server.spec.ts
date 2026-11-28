@@ -174,7 +174,7 @@ test.describe("with the fake game", () => {
     const retry = page.getByRole("button", { name: "Try to start again" });
     await expect(retry).toBeVisible();
     // The button keeps the actions' place, and the message grows under it,
-    // never flush against it (DESIGN 6, rule 4; ruling 1 of fixes 20).
+    // never flush against it (DESIGN 6, rule 4).
     const noteRect = (await crash.boundingBox())!;
     const buttonRect = (await retry.boundingBox())!;
     expect(noteRect.y - (buttonRect.y + buttonRect.height)).toBeGreaterThanOrEqual(8);

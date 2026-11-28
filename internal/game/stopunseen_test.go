@@ -117,7 +117,7 @@ func inGameRuns(r *rig, id string) int {
 	return n
 }
 
-// Every action that stops the game sees the missed restart too (ruling 10):
+// Every action that stops the game sees the missed restart too (SPEC 8.7):
 // Restore stops a game back in game with a warning and a save.
 func TestRestoreSavesAGameBackInGameBeforeAnyLook(t *testing.T) {
 	r := newRig(t, rigOptions{noRun: true})

@@ -540,7 +540,7 @@ func failureAnnouncement(p ServerPage) i18n.Msg {
 }
 
 // resultToasts are the results the plate sums up as toasts: the Done
-// message, the errors of actions asked for during another, and a download
+// message with the time it finished, the errors of actions asked for during another, and a download
 // that worked (DESIGN 6, "Toasts"). A failure stays in the plate, since it
 // carries its next steps. Each toast's key names its result, never the
 // page's state, so a live page sends it once however the state moves.
@@ -551,7 +551,9 @@ func (p ServerPage) resultToasts() []Toast {
 		if p.cancelled() {
 			key = "cancelled." + strconv.FormatUint(p.Result.Op, 10)
 		}
-		out = append(out, Toast{Text: d, Key: key})
+		// The time is a <time> element, so time.js shows it in the
+		// browser's zone (SPEC 17.11).
+		out = append(out, Toast{Text: i18n.M("server.done.box", "message", d, "time", momentUTC(p.Result.At)), Key: key})
 	}
 	for _, res := range p.Others {
 		if res.Err != nil {

@@ -99,7 +99,7 @@ func TestPlanFactsCapsOfferedLookups(t *testing.T) {
 	}
 }
 
-// Issue 620, ruling 15: the review page names mods by title, the title is
+// SPEC 9.2: the review page names mods by title, the title is
 // the portal link, the remove cross names the title, and an offered mod's
 // link and details sit outside its tick box's label.
 func TestPlanShowsTitles(t *testing.T) {

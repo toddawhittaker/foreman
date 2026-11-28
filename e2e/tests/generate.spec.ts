@@ -63,7 +63,7 @@ test("a world with the defaults takes three clicks from the Server page and land
   await page.getByLabel("World name").fill("Fresh start");
   await page.getByRole("button", { name: "Next: Mods" }).click();
 
-  await expect(page).toHaveURL("/worlds/fresh-start/mods?generated=1");
+  await expect(page).toHaveURL(/\/worlds\/fresh-start\/mods(\?generated=1)?$/);
   await expectWithin(clicks, 3, "generate a world with the defaults");
   await checkPage(page);
 
@@ -185,7 +185,7 @@ test("a long world name fits at any width", { tag: "@looks" }, async ({ page, fo
 
 // DESIGN 8.6: on a desktop Preview size sits above the picture, in reach
 // without scrolling; the picture takes the column's width and never shrinks
-// for what shows under it (#973).
+// for what shows under it (DESIGN 8.8).
 for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
   test(`the preview pane keeps Preview size in reach at ${width}x${height}`, { tag: "@looks" }, async ({ page, foreman, fakeGame }, info) => {
     test.skip(info.project.name.startsWith("phone"), "a desktop layout");
@@ -209,7 +209,7 @@ for (const [width, height] of [[1920, 950], [1440, 780]] as const) {
       };
     });
     expect(m.top).toBe(0);
-    // The picture is as wide as the pane's column, whatever the window's height (#973): the
+    // The picture is as wide as the pane's column, whatever the window's height (DESIGN 8.8): the
     // pane scrolls under it rather than shrink it to the room left.
     expect(m.picture).toBeGreaterThan(m.column * 0.9);
     expect(m.slider).toBeLessThanOrEqual(m.bar);
@@ -293,7 +293,7 @@ test("Space Age is refused for 1.1 on step 1, and the fixed form makes the world
   await expect(page.locator("#error-summary")).toContainText("Space Age needs Factorio 2.0 or later");
   await page.getByLabel("Space Age is on").uncheck();
   await page.getByRole("button", { name: "Next: Mods" }).click();
-  await expect(page).toHaveURL("/worlds/old-game/mods?generated=1");
+  await expect(page).toHaveURL(/\/worlds\/old-game\/mods(\?generated=1)?$/);
   expect(worldJSON(foreman.dataDir, "old-game")).toMatchObject({ game_version: "1.1.110", space_age: false });
 });
 

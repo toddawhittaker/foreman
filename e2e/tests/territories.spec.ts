@@ -60,7 +60,7 @@ test("the box shows only beside Vulcanus on a Space Age world, and is off", { ta
   await page.locator("#mg-resources-vulcanus summary").click();
   await expect(box(page)).toBeVisible();
   await expect(box(page)).not.toBeChecked();
-  // No hint under it any more: the working bar's spot holds its place (#975).
+  // No hint under it any more: the working bar's spot holds its place (DESIGN 7.6).
   await expect(box(page)).not.toHaveAttribute("aria-describedby");
   // Off, nothing runs and nothing is drawn.
   await expect(overlay(page)).toHaveCount(0);
@@ -296,7 +296,7 @@ test("the large view's box unticks and ticks the overlay, and the page's box mat
   const dialog = page.locator("#large-view");
   await expect(largeBox(page)).toBeVisible();
   await expect(largeBox(page)).toBeChecked();
-  // No hint under it any more: the working bar's spot holds its place (#975).
+  // No hint under it any more: the working bar's spot holds its place (DESIGN 7.6).
   await expect(largeBox(page)).not.toHaveAttribute("aria-describedby");
   await expect(largeOverlay(page)).toHaveCount(1);
   // Off: the overlay, its words and the download's territories go, and the page's box follows.

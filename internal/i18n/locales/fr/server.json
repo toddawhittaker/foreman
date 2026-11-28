@@ -183,6 +183,7 @@
   "server.step.download_mods": "Télécharger les mods",
   "server.step.snapshot_mods": "Prendre l’instantané avant la modification des mods",
   "server.step.apply_mods": "Modifier les mods",
+  "server.done.box": "{message} Terminé à {time}.",
   "server.cancel_stop": "Annuler l’arrêt",
   "server.op.start_refused": "Démarrage refusé",
   "server.op.start_failed": "Le démarrage a échoué",

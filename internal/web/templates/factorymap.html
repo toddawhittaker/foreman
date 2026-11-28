@@ -38,7 +38,7 @@
 <section class="factorymap" id="factorymap-state" data-state="{{.View.State}}" data-fragment="{{.FragmentPath}}" aria-labelledby="fm-heading">
 <h2 id="fm-heading" class="visually-hidden">{{t "factorymap.tab"}}</h2>
 {{- $v := .View}}
-{{- /* Draw comes first, so the state below it may change length and nothing moves it (ruling 1). */}}
+{{- /* Draw comes first, so the state below it may change length and nothing moves it (DESIGN 8.22). */}}
 {{- if and .CanDraw (ne $v.State "drawing")}}
 <form method="post" action="{{.DrawPath}}" class="factorymap__draw">
   {{- if .NeedMemory}}

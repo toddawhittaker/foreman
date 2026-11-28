@@ -68,14 +68,6 @@
       if (isSearch(e.detail.elt)) searched = null;
     });
   }
-  // The review after Generate says the world was made (SPEC 5.12). The mark
-  // in the address is dropped once drawn, so a reload or Back does not say
-  // it again.
-  const here = new URL(location.href);
-  if (here.pathname.endsWith("/mods/plan") && here.searchParams.has("generated")) {
-    here.searchParams.delete("generated");
-    history.replaceState(history.state, "", here);
-  }
   document.addEventListener("click", (e) => {
     if (e.target.closest?.('#act-review-plan[aria-disabled="true"], #flow-next[aria-disabled="true"]')) e.preventDefault();
   });

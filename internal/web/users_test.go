@@ -115,7 +115,7 @@ func TestUserDeleteEndsSessionsAndTokens(t *testing.T) {
 	}
 }
 
-// SPEC 12.12, ruling 17: a proxy or OIDC user is warned to come back.
+// SPEC 12.12: a proxy or OIDC user is warned to come back.
 func TestUserDeleteWarnsProxyAndOIDCUsersReturn(t *testing.T) {
 	hn := newHarness(t, nil)
 	c := hn.signIn()

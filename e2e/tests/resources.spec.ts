@@ -20,7 +20,7 @@ const section = (page: Page) => page.getByRole("region", { name: "Map preview" }
 const dialog = (page: Page) => page.locator("#large-view");
 const box = (page: Page) => dialog(page).getByRole("checkbox", { name: "Show resource amounts" });
 const labels = (page: Page) => dialog(page).locator(".resources__label");
-// The working bar under the box (#975): idle it keeps its room, unseen.
+// The working bar under the box (DESIGN 7.6): idle it keeps its room, unseen.
 const counting = (page: Page) => page.locator("#large-amounts-work .working");
 const status = (page: Page) => page.locator("#large-status");
 const result = (page: Page) => page.locator("#large-amounts-result");
@@ -580,7 +580,7 @@ test.describe("on the One planet picture", () => {
   });
 
   // The box shows just under itself that it is counting, with the app's working bar, in a
-  // spot it keeps while idle (#975); the announcer says the whole sentence.
+  // spot it keeps while idle (DESIGN 7.6); the announcer says the whole sentence.
   test("ticking the box shows under it that it is counting", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     const busy = page.locator("#preview-amounts-work .working");

@@ -129,22 +129,10 @@
   }
 }
 
-/* The Server overview's plate states the server's state large, so the
-   heading's badge is there for screen readers only. */
-.page-head--plate h1 .state {
-  position: absolute;
-  inline-size: 1px;
-  block-size: 1px;
-  overflow: hidden;
-  clip-path: inset(50%);
-  white-space: nowrap;
-}
-
 /* Line icons: one set (Lucide, ISC licence, vendor/LUCIDE-LICENSE.txt), one
    1.75 stroke on a 24 grid, drawn as a mask so each takes its text's colour
    and stays out of the accessible name. An element opts in by setting --icon. */
 .tabs a::before,
-.page-head--row .button::before,
 .pagehead__actions .button::before {
   flex: none;
   inline-size: 1.125rem;
@@ -161,7 +149,6 @@ main h2[id]::before {
 }
 
 .tabs a::before,
-.page-head--row .button:is([href$="/generate"], [href$="/import"])::before,
 .pagehead__actions .button:is([href$="/generate"], [href$="/import"])::before,
 main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #take-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #plan-heading, #changes-heading, #admins-heading, #none-heading)::before {
   content: "";
@@ -194,12 +181,10 @@ main h2[id]::before {
   --icon: var(--i-settings);
 }
 
-.page-head--row .button[href$="/generate"],
 .pagehead__actions .button[href$="/generate"] {
   --icon: var(--i-plus);
 }
 
-.page-head--row .button[href$="/import"],
 .pagehead__actions .button[href$="/import"] {
   --icon: var(--i-upload);
 }
@@ -745,22 +730,6 @@ a:hover {
   letter-spacing: 0;
 }
 
-/* A page's heading, with its state badge, and the lines under it. */
-.page-head {
-  display: grid;
-  gap: var(--space-1);
-}
-
-/* A heading with the page's own buttons at its end, wrapping under it when narrow. */
-.page-head--row {
-  display: grid;
-  flex-wrap: wrap;
-  align-items: end;
-  justify-content: space-between;
-  gap: var(--space-1) var(--space-4);
-  grid-template-columns: minmax(0, 1fr) auto;
-}
-
 /* A heading with a time or a mod's name in its sentence reads as one run of
    text, not a row of parts with gaps around the name (DESIGN 8.11). */
 main h1:has(> .ident) {
@@ -881,18 +850,6 @@ main:has(> .gate) > .pagehead > h1 {
 
 main:has(> .gate) > .pagehead > :is(.pagehead__crumb, .pagehead__actions:empty) {
   display: none;
-}
-
-/* A world's heading with the live server state beside it. */
-.title-row {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: var(--space-2) var(--space-3);
-}
-
-.title-row > .state {
-  font-size: var(--text-md);
 }
 
 /* The sign-in page has no sections, so the language menu still ends the bar. */
@@ -1262,27 +1219,6 @@ main:has(> .gate) > .pagehead > :is(.pagehead__crumb, .pagehead__actions:empty) 
   }
 }
 
-/* One page head on every page (DESIGN 6): the section as an overline, the
-   title with its state, then the tabs 16 px under it and the first card
-   24 px under those. */
-main > .eyebrow {
-  margin-block-end: calc(var(--space-1) - var(--space-4));
-}
-
-.page-head > .eyebrow {
-  margin-block-end: 0;
-}
-
-@media (min-width: 40rem) {
-  main > .eyebrow {
-    margin-block-end: calc(var(--space-1) - var(--space-5));
-  }
-
-  main > :is(h1, .title-row, .page-head, .page-head--row) + .subnav {
-    margin-block-start: calc(var(--space-4) - var(--space-5));
-  }
-}
-
 @media (prefers-reduced-motion: no-preference) {
   .site {
     view-transition-name: site-header;
@@ -1323,48 +1259,7 @@ main:has(> .gate) > .gate {
   }
 }
 
-/* A page head with its own buttons keeps the overline on a line of its own. */
-.page-head--row > .eyebrow {
-  flex: 1 1 100%;
-  grid-column: 1;
-  grid-row: 1;
-  margin: 0;
-}
-
-/* One page head on every page: the section's name as the overline and the
-   title under it, both at the start edge; the page's own buttons sit at the
-   end of the title's line, and on a phone stack full width under it. */
-.page-head--row > h1 {
-  grid-column: 1;
-  grid-row: 2;
-}
-
-.page-head--row > .actions {
-  grid-column: 2;
-  grid-row: 1 / span 2;
-  align-self: end;
-  flex-wrap: nowrap;
-  margin: 0;
-}
-
 @media (max-width: 39.99rem) {
-  .page-head--row {
-    grid-template-columns: minmax(0, 1fr);
-  }
-
-  .page-head--row > .actions {
-    grid-column: 1;
-    grid-row: 3;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr);
-    gap: var(--space-3);
-    margin-block-start: var(--space-3);
-  }
-
-  .page-head--row > .actions > .button {
-    inline-size: 100%;
-  }
-
   .subnav {
     border-block-end: 0;
   }

@@ -31,7 +31,9 @@ test("a new schedule is offered at 04:00 UTC and saves", async ({ page }) => {
   await checkPage(page);
 
   await page.getByRole("button", { name: "Save schedule" }).click();
-  await expect(page).toHaveURL("/settings/restart-schedule?done=saved");
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL("/settings/restart-schedule");
   await expect(page.locator("#toasts .toast--success")).toContainText("Saved. The next restart is");
   await expect(page.locator("#schedule-state")).toContainText("Foreman restarts the active world every day at 04:00 (UTC). Next restart:");
   await expect(page.locator("#schedule-state time")).toHaveAttribute("datetime", /T04:00:00Z$/);

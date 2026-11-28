@@ -137,7 +137,7 @@ test.describe("with the fake game", () => {
       return { held: last.bottom - first.top + frame, band: el.getBoundingClientRect().bottom - last.bottom - parseFloat(s.paddingBlockEnd) - parseFloat(s.borderBottomWidth) };
     });
     if (held < cap - 4) expect(band, "empty space under the newest entry, in px").toBeLessThanOrEqual(4);
-    // The page stays where it was after the send (ruling 1 of fixes 20); the reply is read out.
+    // The page stays where it was after the send (DESIGN 8.5); the reply is read out.
     await expect(reply).toBeAttached();
     await checkPage(page);
   });

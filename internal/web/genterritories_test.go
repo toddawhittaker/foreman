@@ -190,7 +190,7 @@ func TestTerritoryBoxShowsOnlyForVulcanus(t *testing.T) {
 	if !strings.Contains(off, box) || strings.Contains(off, " checked> Show demolisher") || strings.Contains(off, `name="territories" value="1" checked>`) {
 		t.Errorf("Vulcanus lacks the box, or it is ticked when off:\n%s", off)
 	}
-	// No hint under the box: its working bar's spot, held while idle, takes the place (#975).
+	// No hint under the box: its working bar's spot, held while idle, takes the place (DESIGN 7.6).
 	if !strings.Contains(off, "Show demolisher territories") || strings.Contains(off, "Finding them takes a few seconds more.") || !strings.Contains(off, `id="preview-territories-work" data-idle`) {
 		t.Errorf("the box's words are missing:\n%s", off)
 	}
@@ -414,7 +414,7 @@ func TestTerritoryDownloadDrawsWithTheRequestContextAndRefusesWhenBusy(t *testin
 	}
 }
 
-// The territories hint is gone everywhere, /design and the catalogue too (#975).
+// The territories hint is gone everywhere, /design and the catalogue too (DESIGN 8.8).
 func TestTerritoriesHintIsGone(t *testing.T) {
 	if slices.Contains(i18n.EnglishKeys(), "worlds.generate.territories.hint") {
 		t.Error("the catalogue still has worlds.generate.territories.hint")

@@ -278,7 +278,7 @@ test("just above the stacking width, long names and a long detail do not scroll 
 
 // The longest English action label beside a long time, user, token and
 // detail fits the table in its plate on a laptop-wide screen too, where the
-// cells keep one line where they can (#962).
+// cells keep one line where they can (DESIGN 8.3).
 for (const width of [1920, 1440, 1280, 1100]) {
   test(`at ${width} px the longest action label and long names keep the table inside its plate`, { tag: "@looks" }, async ({ page, foreman }) => {
     await page.setViewportSize({ width, height: 900 });

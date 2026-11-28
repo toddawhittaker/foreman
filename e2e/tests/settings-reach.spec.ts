@@ -18,7 +18,9 @@ async function saveGeneral(page: Page, values: { countdown?: string; save?: stri
   if (values.save !== undefined) await saveLimit(page).fill(values.save);
   if (values.mod !== undefined) await modLimit(page).fill(values.mod);
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL("/settings/general?done=saved");
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL("/settings/general");
 }
 
 test("the stop and restart forms start from the countdown setting", async ({ page, foreman, fakeGame }) => {

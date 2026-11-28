@@ -58,29 +58,11 @@ fieldset > .check + a {
   font-weight: 600;
 }
 
-.steps progress {
-  grid-column: 2;
-  inline-size: 100%;
-  max-inline-size: 20rem;
-  accent-color: var(--color-selected);
-}
-
-/* The indeterminate bar always moves; the "In progress" word says the same (DESIGN 6, Motion). */
-@media (prefers-reduced-motion: reduce) {
-  .steps progress {
-    display: none;
-  }
-}
-
 /* A narrow panel, such as a phone at large text, puts the word above the
    step, so the step's name keeps the full width (DESIGN 3). */
 @container (max-width: 14rem) {
   .steps > li {
     grid-template-columns: minmax(0, 1fr);
-  }
-
-  .steps progress {
-    grid-column: 1;
   }
 }
 

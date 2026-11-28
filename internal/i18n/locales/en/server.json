@@ -183,6 +183,7 @@
   "server.step.download_mods": "Download the mods",
   "server.step.snapshot_mods": "Take the snapshot before the mod change",
   "server.step.apply_mods": "Change the mods",
+  "server.done.box": "{message} Finished at {time}.",
   "server.cancel_stop": "Cancel stop",
   "server.op.start_refused": "Start refused",
   "server.op.start_failed": "The start failed",

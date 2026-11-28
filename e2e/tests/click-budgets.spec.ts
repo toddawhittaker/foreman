@@ -110,7 +110,7 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByLabel("World name").fill("Fresh");
     await page.getByRole("button", { name: "Next: Mods" }).click();
     // Making the world lands on step 2, its mods (SPEC 5.6).
-    await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
+    await expect(page).toHaveURL(/\/worlds\/fresh\/mods(\?generated=1)?$/);
     await expectWithin(clicks, 3, "generate");
   });
 
@@ -121,7 +121,7 @@ test.describe("click budgets, with the fake game", () => {
     await page.goto("/generate");
     await page.getByLabel("World name").fill("Fresh");
     await page.getByRole("button", { name: "Next: Mods" }).click();
-    await expect(page).toHaveURL("/worlds/fresh/mods?generated=1");
+    await expect(page).toHaveURL(/\/worlds\/fresh\/mods(\?generated=1)?$/);
     const mods = join(foreman.dataDir, "worlds", "fresh", "mods");
     copyFileSync(join(import.meta.dirname, "..", "testdata", "fake-planet_1.0.0.zip"), join(mods, "fake-planet_1.0.0.zip"));
     writeFileSync(join(mods, "mod-list.json"), JSON.stringify({ mods: [{ name: "base", enabled: true }, { name: "fake-planet", enabled: true }] }));

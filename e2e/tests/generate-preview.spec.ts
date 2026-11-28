@@ -190,7 +190,7 @@ test.describe("with script", () => {
   });
 
   // DESIGN 8.8: a redraw shows the app's working bar and its words on the drawing line, and only while it
-  // runs; the line keeps its height, idle or not, so nothing under it moves (#975).
+  // runs; the line keeps its height, idle or not, so nothing under it moves (DESIGN 7.6).
   test("a redraw shows the moving bar beside its words until the picture lands", { tag: "@looks" }, async ({ page, fakeGame }) => {
     await openNewMap(page);
     await expect(planetPictures(page)).toHaveCount(1);

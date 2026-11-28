@@ -137,7 +137,7 @@ func TestOIDCUserCannotSetAPassword(t *testing.T) {
 	}
 }
 
-// SPEC 12.12 (ruling 17): a deleted proxy user is made again at their next
+// SPEC 12.12: a deleted proxy user is made again at their next
 // request, as a new user. Their old API tokens stay gone and the new user
 // is recorded as user-create.
 func TestDeletedProxyUserComesBack(t *testing.T) {

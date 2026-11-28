@@ -189,6 +189,7 @@
   "server.step.download_mods": "Stáhnout mody",
   "server.step.snapshot_mods": "Pořídit snímek před změnou modů",
   "server.step.apply_mods": "Změnit mody",
+  "server.done.box": "{message} Dokončeno v {time}.",
   "server.cancel_stop": "Zrušit zastavení",
   "server.op.start_refused": "Spuštění odmítnuto",
   "server.op.start_failed": "Spuštění selhalo",

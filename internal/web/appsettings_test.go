@@ -110,7 +110,7 @@ func TestGeneralPageShowsSettings(t *testing.T) {
 	}
 }
 
-// SPEC 13.1, rulings 8 and 12: a save stores every changed value, audits
+// SPEC 13.1: a save stores every changed value, audits
 // each with its old and new value, leaves the unchanged ones alone, and
 // gives the new retention to the world manager.
 func TestGeneralSaveStoresAuditsAndApplies(t *testing.T) {
@@ -183,7 +183,7 @@ func TestGeneralNeedsSignIn(t *testing.T) {
 	}
 }
 
-// SPEC 6.6, ruling 8: lowering retention deletes nothing when saved; the
+// SPEC 6.6: lowering retention deletes nothing when saved; the
 // page says how many automatic snapshots across how many worlds will go.
 func TestGeneralLoweringRetentionDeletesNothingAndCounts(t *testing.T) {
 	hn := newHarness(t, nil)
@@ -313,7 +313,7 @@ func (r *foremanRig) worldWithAutos(t *testing.T, n int) string {
 	return id
 }
 
-// SPEC 21.8, ruling 10: an argument left out keeps its value; one outside
+// SPEC 21.8: an argument left out keeps its value; one outside
 // its range is refused, and a refused call still spends its code.
 func TestMCPSetForemanSettingsRefusesBadValues(t *testing.T) {
 	r := newForemanRig(t, keyed)
@@ -335,7 +335,7 @@ func TestMCPSetForemanSettingsRefusesBadValues(t *testing.T) {
 	}
 }
 
-// SPEC 21.8, ruling 10: a setting that changed since the preview saves
+// SPEC 21.8: a setting that changed since the preview saves
 // nothing and returns a fresh preview and code.
 func TestMCPSetForemanSettingsMovedState(t *testing.T) {
 	r := newForemanRig(t, keyed)

@@ -32,13 +32,18 @@ test("the whole flow: step 1, skip the mods, a preset on step 4, finished on the
   await page.getByRole("button", { name: "Next: Mods" }).click();
 
   // Step 2, the world's mods, can be skipped.
-  await expect(page).toHaveURL("/worlds/rich-start/mods?generated=1");
+  await expect(page).toHaveURL(/\/worlds\/rich-start\/mods(\?generated=1)?$/);
   // A toast on the Mods tab says the world is made; it leaves focus alone.
   const made = page.locator("#toasts .toast__text");
   await expect(made).toHaveText("Done: Rich start is made. Next, pick its mods or skip this step.");
   await expect(page.locator("#toasts [data-toast]")).not.toBeFocused();
   await checkPage(page);
   await page.screenshot({ path: `../screenshots/d1-step2-made-${info.project.name}.png`, fullPage: true });
+  // The toast came from the address, so the parameter is dropped and a
+  // reload shows it no more (DESIGN 6, "Toasts", "Shown once").
+  await expect(page).toHaveURL("/worlds/rich-start/mods");
+  await page.reload();
+  await expect(page.locator("#toasts [data-toast]")).toHaveCount(0);
   // Step 3 has nothing to set without mods, so Skip lands on step 4.
   await page.getByRole("link", { name: "Skip to map settings" }).click();
 
@@ -75,7 +80,7 @@ test("an Unfinished world says so on the list and its page, and Continue opens s
   await page.goto("/generate");
   await page.getByLabel("World name").fill("Half made");
   await page.getByRole("button", { name: "Next: Mods" }).click();
-  await expect(page).toHaveURL("/worlds/half-made/mods?generated=1");
+  await expect(page).toHaveURL(/\/worlds\/half-made\/mods(\?generated=1)?$/);
 
   await page.goto("/worlds");
   const row = page.locator("ul.worlds > li", { has: page.locator("#world-half-made") });
@@ -110,7 +115,7 @@ test("after step 4's save the world is Ready, with Switch as the primary button"
   await page.goto("/generate");
   await page.getByLabel("World name").fill("All set");
   await page.getByRole("button", { name: "Next: Mods" }).click();
-  await expect(page).toHaveURL("/worlds/all-set/mods?generated=1");
+  await expect(page).toHaveURL(/\/worlds\/all-set\/mods(\?generated=1)?$/);
   await page.goto(newMapPath("all-set"));
   await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
   await page.getByRole("button", { name: "Finish" }).click();
@@ -151,7 +156,7 @@ test.describe("step 4 without script", () => {
     await page.goto("/generate");
     await page.getByLabel("World name").fill("No script");
     await page.getByRole("button", { name: "Next: Mods" }).click();
-    await expect(page).toHaveURL("/worlds/no-script/mods?generated=1");
+    await expect(page).toHaveURL(/\/worlds\/no-script\/mods(\?generated=1)?$/);
     await page.goto(newMapPath("no-script"));
     await expect(page.locator("#generate-form")).toBeVisible({ timeout: 60_000 });
     await page.getByRole("button", { name: "Preview map" }).click();

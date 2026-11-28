@@ -189,6 +189,7 @@
   "server.step.download_mods": "Pobierz modyfikacje",
   "server.step.snapshot_mods": "Wykonaj migawkę przed zmianą modyfikacji",
   "server.step.apply_mods": "Zmień modyfikacje",
+  "server.done.box": "{message} Zakończono o {time}.",
   "server.cancel_stop": "Anuluj zatrzymanie",
   "server.op.start_refused": "Uruchomienie odrzucone",
   "server.op.start_failed": "Uruchomienie się nie powiodło",

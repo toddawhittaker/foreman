@@ -4,13 +4,13 @@ import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { openNewMap, newMapPath } from "./newmap.js";
 
-// Fixes batch 20, rulings 1 and 2 on Generate's pages: nothing moves because
-// of a change elsewhere on the page (0 px in x and y, scrollY unchanged), and
-// each thing is drawn one way. The issues: #973 (the map keeps its size),
-// #974 (Previous on the star map), #975 (one working bar in a fixed spot),
-// #977 (one row per resource in the large view), #966 (the star map's labels
-// fit), #984 (one page header on every step), #986 (a disclosure opens under
-// its summary) and #987 (one footer, no sideways scroll). Each test walks the
+// Generate's pages: nothing moves because of a change elsewhere on the page
+// (0 px in x and y, scrollY unchanged), and each thing is drawn one way: the
+// map keeps its size and the large view has one row per resource (DESIGN
+// 8.8), Previous mirrors Next and the labels fit on the star map (DESIGN
+// 8.23), one working bar in a fixed spot (DESIGN 7.6), one page header on
+// every step (DESIGN 6), a disclosure opens under its summary (DESIGN 7.8)
+// and one footer, with no sideways scroll (DESIGN 7.2). Each test walks the
 // widths and themes itself, so it runs once, in the first project.
 test.use({ fakeGameOn: true });
 
@@ -136,7 +136,7 @@ async function openLarge(page: Page) {
   await expect.poll(() => page.locator("#large-img").evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
 }
 
-test("#984: steps 1 to 4 put the crumb's row, the title and the step bar in one place", async ({ page, foreman }) => {
+test("steps 1 to 4 put the crumb's row, the title and the step bar in one place", async ({ page, foreman }) => {
   const id = await openNewMap(page, { name: "Steps" });
   addFakePlanet(foreman.dataDir, id);
   const paths = ["/generate", `/worlds/${id}/mods`, `${newMapPath(id)}/mod-settings`, newMapPath(id)];
@@ -168,7 +168,7 @@ const inPage = (page: Page, selector: string) => page.locator(selector).first().
   return { x: r.x, y: r.y - pane.getBoundingClientRect().y + pane.scrollTop, width: r.width, height: r.height };
 });
 
-test("#973: the map keeps its size as Show resource amounts is ticked and its list opens", async ({ page }) => {
+test("the map keeps its size as Show resource amounts is ticked and its list opens", async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await page.goto(newMapPath(id));
@@ -195,7 +195,7 @@ test("#973: the map keeps its size as Show resource amounts is ticked and its li
 });
 
 // One test per width, so each stays well inside the time limit on a slow runner.
-for (const size of widths) test(`#975: in the panel, each box has its working bar under it, and ticking one moves neither, ${size.width} px`, async ({ page }) => {
+for (const size of widths) test(`in the panel, each box has its working bar under it, and ticking one moves neither, ${size.width} px`, async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await vulcanus(page, id);
@@ -242,7 +242,7 @@ for (const size of widths) test(`#975: in the panel, each box has its working ba
   }, [size]);
 });
 
-for (const size of widths) test(`#975: in the large view of Vulcanus, ticking either box never moves the other, ${size.width} px`, async ({ page }) => {
+for (const size of widths) test(`in the large view of Vulcanus, ticking either box never moves the other, ${size.width} px`, async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await vulcanus(page, id);
@@ -283,7 +283,7 @@ for (const size of widths) test(`#975: in the large view of Vulcanus, ticking ei
   }, [size]);
 });
 
-test("#984: the large view's header keeps its parts in place from planet to planet", async ({ page }) => {
+test("the large view's header keeps its parts in place from planet to planet", async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await page.goto(newMapPath(id));
@@ -307,7 +307,7 @@ test("#984: the large view's header keeps its parts in place from planet to plan
   });
 });
 
-test("#974: on the star map Previous sits at the frame's start edge, the mirror of Next", async ({ page }) => {
+test("on the star map Previous sits at the frame's start edge, the mirror of Next", async ({ page }) => {
   await openNewMap(page);
   await page.setViewportSize({ width: 1920, height: 1080 });
   await expect(section(page).getByRole("img")).toHaveCount(1, { timeout: 60_000 });
@@ -328,7 +328,7 @@ test("#974: on the star map Previous sits at the frame's start edge, the mirror 
   expect(prev.y).toBe(next.y);
 });
 
-test("#977: the large view's settings put each resource's name and its three sliders on one row", async ({ page }) => {
+test("the large view's settings put each resource's name and its three sliders on one row", async ({ page }) => {
   const id = await openNewMap(page);
   await page.setViewportSize({ width: 1920, height: 1080 });
   await vulcanus(page, id);
@@ -357,7 +357,7 @@ test("#977: the large view's settings put each resource's name and its three sli
 
 // The server sizes the star map for its labels, so the page, the large view and the downloaded file
 // all fit them, with or without script. A name of wide letters is wider than an average guess.
-test("#966: every star map label fits inside its picture, on the page, in the large view and in the file", async ({ page, foreman }) => {
+test("every star map label fits inside its picture, on the page, in the large view and in the file", async ({ page, foreman }) => {
   const id = await openNewMap(page, { name: "Modded" });
   addFakePlanet(foreman.dataDir, id, "WM".repeat(50));
   const inside = (svg: string) => page.locator(svg).first().evaluate((s) => {
@@ -389,7 +389,7 @@ test("#966: every star map label fits inside its picture, on the page, in the la
   expect(await inside("svg"), "file").toEqual([]);
 });
 
-test("#986: opening Fill from a map exchange string leaves its summary where it was", async ({ page }) => {
+test("opening Fill from a map exchange string leaves its summary where it was", async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label, wide) => {
     await page.goto(newMapPath(id));
@@ -406,7 +406,7 @@ test("#986: opening Fill from a map exchange string leaves its summary where it 
   });
 });
 
-test("#987: every step ends in the one form foot, and step 4 never scrolls sideways on a phone", async ({ page }) => {
+test("every step ends in the one form foot, and step 4 never scrolls sideways on a phone", async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     for (const path of ["/generate", newMapPath(id)]) {
@@ -445,7 +445,7 @@ const typeSeed = (page: Page, seed: string) => page.locator("#generate-seed").ev
   f.dispatchEvent(new Event("change", { bubbles: true }));
 }, seed);
 
-test("#975: Preview map redraws without moving its button, the preview's size field or the page", async ({ page }) => {
+test("Preview map redraws without moving its button, the preview's size field or the page", async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await page.goto(newMapPath(id));
@@ -473,7 +473,7 @@ test("#975: Preview map redraws without moving its button, the preview's size fi
   });
 });
 
-test("#975: Show resource amounts moves neither Draw from a real game nor the picture's Download link", async ({ page }) => {
+test("Show resource amounts moves neither Draw from a real game nor the picture's Download link", async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await page.goto(newMapPath(id));
@@ -499,7 +499,7 @@ test("#975: Show resource amounts moves neither Draw from a real game nor the pi
   });
 });
 
-test("#975: under the preview the redraw's words wrap whole at 320 px, and showing them moves nothing", async ({ page }) => {
+test("under the preview the redraw's words wrap whole at 320 px, and showing them moves nothing", async ({ page }) => {
   const id = await openNewMap(page);
   await page.setViewportSize({ width: 320, height: 640 });
   await page.goto(newMapPath(id));

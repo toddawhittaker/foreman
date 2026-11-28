@@ -1,12 +1,14 @@
 package web
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/toddawhittaker/foreman/internal/i18n"
+	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// DESIGN 6, "Toasts" (ruling 6): step 4's and Mod settings' result notes are
+// DESIGN 6, "Toasts": step 4's and Mod settings' result notes are
 // toasts that take no room. Each is a save the page did not make, so it is an
 // error toast that stays until closed.
 func TestGenerateResultNotesAreToasts(t *testing.T) {
@@ -30,4 +32,25 @@ func TestGenerateResultNotesAreToasts(t *testing.T) {
 	}
 	one("no change", ModSettingsPage{NoChange: true}.toasts(), "mods.settings.edit.no_change")
 	one("no change in the flow", FlowModSettingsPage{ModSettingsPage: ModSettingsPage{NoChange: true}}.toasts(), "mods.settings.edit.no_change")
+}
+
+// DESIGN 6, "Toasts", "Shown once": the Mods step's "just made" toast comes
+// from the generated parameter, so it names it and toast.js drops it; a reload
+// then shows nothing (SPEC 5.6). The favorite's review does the same (SPEC 5.12).
+func TestGeneratedToastsDropTheirParameter(t *testing.T) {
+	sum := world.Summary{ID: "fresh", Name: "Fresh", GameVersion: "2.0.1", Unfinished: true}
+	for _, c := range []struct {
+		name string
+		page Page
+	}{
+		{"mods step", ModsPage{World: sum, Generated: true}},
+		{"favorite review", ModPlanPage{World: sum, Generated: true}},
+	} {
+		t.Run(c.name, func(t *testing.T) {
+			region := toastRegion(pageHTML(t, c.page))
+			if !strings.Contains(region, `data-toast data-drop="`+generatedQuery+`"`) {
+				t.Errorf("toast does not drop %q: %q", generatedQuery, region)
+			}
+		})
+	}
 }

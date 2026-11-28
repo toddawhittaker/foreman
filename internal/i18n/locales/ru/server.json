@@ -189,6 +189,7 @@
   "server.step.download_mods": "Скачать моды",
   "server.step.snapshot_mods": "Сделать снимок перед изменением модов",
   "server.step.apply_mods": "Изменить моды",
+  "server.done.box": "{message} Завершено в {time}.",
   "server.cancel_stop": "Отменить остановку",
   "server.op.start_refused": "Запуск отклонён",
   "server.op.start_failed": "Запуск не удался",

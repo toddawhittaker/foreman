@@ -11,7 +11,7 @@ import (
 	"github.com/toddawhittaker/foreman/internal/i18n"
 )
 
-// DESIGN 6, "Toasts" (ruling 6): a save the raw editor refuses as a whole is
+// DESIGN 6, "Toasts": a save the raw editor refuses as a whole is
 // an error toast; the editor's own text errors stay at the field, so a page
 // with only those has none.
 func TestSettingsRawRefusalIsAToast(t *testing.T) {

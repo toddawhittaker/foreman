@@ -1061,10 +1061,10 @@ const (
 var planKinds = []mods.Kind{mods.KindInstall, mods.KindUpdate, mods.KindSync, mods.KindEnable, mods.KindDisable, mods.KindRemove, mods.KindUpload}
 
 // toasts: in the guided Generate, the Mods step says the world was just made
-// (SPEC 5.6).
+// (SPEC 5.6). It came from the address, so toast.js drops the parameter.
 func (p ModsPage) toasts() []Toast {
 	if p.InFlow() && p.Generated {
-		return []Toast{{Text: i18n.M("mods.flow.generated", "name", p.World.Name)}}
+		return []Toast{{Text: i18n.M("mods.flow.generated", "name", p.World.Name), Drop: []string{generatedQuery}}}
 	}
 	return nil
 }
@@ -1073,7 +1073,7 @@ func (p ModsPage) toasts() []Toast {
 // (SPEC 5.12). A redraw keeps the toast already shown.
 func (p ModPlanPage) toasts() []Toast {
 	if p.Generated && !p.Redraw {
-		return []Toast{{Text: i18n.M("favorites.review.generated", "name", p.World.Name)}}
+		return []Toast{{Text: i18n.M("favorites.review.generated", "name", p.World.Name), Drop: []string{generatedQuery}}}
 	}
 	return nil
 }

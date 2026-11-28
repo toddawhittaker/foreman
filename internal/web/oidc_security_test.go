@@ -147,7 +147,7 @@ func TestOIDCNoCodeStateOrSecretInLogsOrPages(t *testing.T) {
 	o.noSecretsLogged()
 }
 
-// SPEC 12.7 (ruling 3): a header user is linked to the first subject that
+// SPEC 12.7: a header user is linked to the first subject that
 // signs in with their name, once. A second subject with the same name is
 // refused and does not move the link.
 func TestOIDCHeaderUserLinkCannotMove(t *testing.T) {

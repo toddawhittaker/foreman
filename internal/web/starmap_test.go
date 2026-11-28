@@ -959,7 +959,7 @@ func TestStarMapDrawsRebuiltStar(t *testing.T) {
 	}
 }
 
-// SPEC 5.6, DESIGN 8.23 (#966): a label of wide letters at the right edge is
+// SPEC 5.6, DESIGN 8.23: a label of wide letters at the right edge is
 // inside the view box at its real width, about a font a letter, so the page,
 // the file and a page without script never cut it.
 func TestStarMapFitsAWideLabelAtTheEdge(t *testing.T) {

@@ -18,8 +18,8 @@ import (
 	"github.com/toddawhittaker/foreman/internal/world"
 )
 
-// Gate tests for archived worlds (SPEC 5.9, 6.5, 21.7; plan rulings 7 and
-// 9): no route a person or a token can reach starts an archived world.
+// Gate tests for archived worlds (SPEC 5.9, 6.5,
+// 21.7): no route a person or a token can reach starts an archived world.
 // archive_test.go covers the pages and tools themselves; the controller's
 // own refusals are in internal/game.
 
@@ -262,7 +262,7 @@ func TestRunningArchivedWorldIsNotRelaunched(t *testing.T) {
 	}
 }
 
-// SPEC 5.9, 6.5 (ruling 9): a restore through the snapshot page or
+// SPEC 5.9, 6.5: a restore through the snapshot page or
 // restore_snapshot keeps the world's archive state as it is now, whichever
 // state the snapshot was taken in.
 func TestRestoreKeepsTheArchiveStateThroughThePagesAndMCP(t *testing.T) {

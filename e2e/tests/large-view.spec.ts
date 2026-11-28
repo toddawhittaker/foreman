@@ -528,7 +528,7 @@ for (const [w, h] of [[1280, 1600], [1920, 900], [1920, 400], [320, 640]]) {
     });
     if (w === 1920) {
       // The pane's rule: the column's width at any window height, so what shows
-      // under the picture never shrinks it; the pane scrolls instead (#973).
+      // under the picture never shrinks it; the pane scrolls instead (DESIGN 8.8).
       expect(box.width).toBeCloseTo(column.width - frame, 0);
     } else {
       const cap = Math.max(256, h - 2 * 44 - 16);

@@ -434,7 +434,7 @@ func TestCutUTF8(t *testing.T) {
 	}
 }
 
-// SPEC 8.4, #964: on a map that has not yet run a second the game answers
+// SPEC 8.4: on a map that has not yet run a second the game answers
 // /time with an empty line. The history says no reply came rather than
 // showing a blank entry, and the announcer says the same.
 func TestConsoleBlankReplySaysNoReply(t *testing.T) {
@@ -444,7 +444,8 @@ func TestConsoleBlankReplySaysNoReply(t *testing.T) {
 
 	g.post(consoleSendPath(id), url.Values{"command": {"/time"}})
 	body := g.get(PathConsole)
-	if !strings.Contains(body, "You sent </span>/time</p>\n        <p>The game sent no reply.</p>") {
+	// The words, not the template's indentation between them, are checked.
+	if !strings.Contains(strings.Join(strings.Fields(reTag.ReplaceAllString(body, " ")), " "), "You sent /time The game sent no reply.") {
 		t.Errorf("the blank reply is not said as no reply:\n%s", body)
 	}
 	if _, list, _ := strings.Cut(body, `class="console-history"`); strings.Contains(list, "<pre") {

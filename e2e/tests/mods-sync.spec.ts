@@ -225,7 +225,7 @@ test("in a 2.1 world the nearest release is the next one up on the 2.1 line", as
 // A redraw that finds a conflict answers 200 so htmx swaps it in, and the
 // conflict is announced. Two offers that each fit on their own conflict
 // once both are ticked; an offer that conflicts with a mod already on is
-// left out with a note instead of a box (#970); one that conflicts only
+// left out with a note instead of a box (SPEC 9.2); one that conflicts only
 // with another offer keeps its box, where it was.
 test("ticking an optional mod that conflicts shows the conflict", { tag: "@looks" }, async ({ page, foreman, fakeGame, fakePortal }) => {
   const portal = fakePortal!;

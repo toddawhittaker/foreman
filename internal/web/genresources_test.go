@@ -309,7 +309,7 @@ func TestLargeViewHasTheResourceBox(t *testing.T) {
 	body := getLong(hn, strings.TrimSuffix(refreshPath(t, hn, c, "2.1.24"), "/refresh")+"?wait=1", c).Body.String()
 	for _, want := range []string{
 		`<input type="checkbox" id="large-amounts"> Show resource amounts</label>`,
-		// The working bar's spot under the box, held while idle (#975); the
+		// The working bar's spot under the box, held while idle (DESIGN 7.6); the
 		// sentence is said as a count starts, the bar is not named again (DESIGN 8.8).
 		`<div class="work-slot" id="large-amounts-work" data-idle aria-hidden="true"><span class="working"><span class="working__bar" aria-hidden="true"></span><span class="working__text">Counting…</span></span></div>`,
 		`<p class="visually-hidden" id="large-counting-text">Counting resources in the map… This can take up to a minute.</p>`,

@@ -111,7 +111,7 @@ test("a world mod named like Foreman's helper mod is said in the preview", async
   await checkPage(page);
 });
 
-// Issue 965, SPEC 5.6, 8.7: a mod that crashes the planets read is named by
+// SPEC 5.6, 8.7: a mod that crashes the planets read is named by
 // its title with its removal, and the failure is kept: reloading does not
 // run the game again until the world's mods change.
 test("a mod that crashes the planet read is named, and the read is not run again", async ({ page, foreman, fakeGame }) => {
@@ -140,7 +140,7 @@ test("a mod that crashes the planet read is named, and the read is not run again
   expect(await runs()).toBe(before);
 });
 
-// Issue 965: a kept failure that names no mod says a change of mods tries again.
+// SPEC 5.6: a kept failure that names no mod says a change of mods tries again.
 test("a kept planet-read failure with no mod named says to change the mods", async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);

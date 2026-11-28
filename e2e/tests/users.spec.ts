@@ -61,7 +61,9 @@ test("the tab lists users and deletes another one, signing them out", { tag: "@l
   await expect(page.locator("#user-delete-returns")).toHaveCount(0);
   await checkPage(page);
   await page.getByRole("button", { name: "Delete user" }).click();
-  await expect(page).toHaveURL(/\/settings\/users\?done=deleted/);
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL(/\/settings\/users$/);
   await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The user was deleted.");
   await expect(page.locator("#user-list")).not.toContainText("bob");
   expect(sql(foreman, "SELECT count(*) AS n FROM api_tokens")[0].n).toBe(0);

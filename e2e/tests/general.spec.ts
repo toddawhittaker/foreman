@@ -55,9 +55,14 @@ test("a save stores every value and the page shows them again", async ({ page })
   await saveLimit(page).fill("2048");
   await modLimit(page).fill("300");
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL("/settings/general?done=saved");
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL("/settings/general");
   await expect(page.locator("#toasts .toast--success")).toContainText("Saved. The new settings apply from now on.");
   await checkPage(page);
+  // Shown once: a reload says nothing (DESIGN 6, "Toasts").
+  await page.reload();
+  await expect(page.locator("#toasts [data-toast]")).toHaveCount(0);
   await page.goto("/settings/general");
   await expect(retention(page)).toHaveValue("5");
   await expect(countdown(page)).toHaveValue("0");
@@ -129,7 +134,9 @@ test("confirming saves every value and deletes nothing yet", { tag: "@looks" }, 
   await modLimit(page).fill("300");
   await page.getByRole("button", { name: "Save settings" }).click();
   await page.locator("section.confirm").getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL("/settings/general?done=saved");
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL("/settings/general");
   // The toast says only Saved, and closes; the count, the one record of what
   // the save will remove, stays in the page as plain text.
   await expect(page.locator("#toasts .toast--success")).toContainText("Saved. The new settings apply from now on.");
@@ -155,7 +162,9 @@ test("lowering retention with nothing to remove saves at once", async ({ page, f
   await page.goto("/settings/general");
   await retention(page).fill("2");
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL("/settings/general?done=saved");
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL("/settings/general");
   await expect(page.locator("#general-trim")).toHaveCount(0);
   await expect(retention(page)).toHaveValue("2");
 });

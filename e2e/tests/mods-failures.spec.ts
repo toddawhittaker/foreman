@@ -242,7 +242,9 @@ test.describe("a download is over the mod size limit", () => {
     await page.goto("/settings/general");
     await page.getByLabel("Largest mod upload (MB)").fill("10");
     await page.getByRole("button", { name: "Save settings" }).click();
-    await expect(page).toHaveURL("/settings/general?done=saved");
+    // The toast came from the address, which drops its parameter (SPEC 17.21).
+    await expect(page.locator("#toasts .toast--success")).toBeVisible();
+    await expect(page).toHaveURL("/settings/general");
     const before = { creates: await creates(g), list: readFileSync(join(modsDir(foreman), "mod-list.json"), "utf8"), files: readdirSync(modsDir(foreman)).sort() };
 
     await page.goto("/worlds/base/mods/plan?kind=install&name=fp-big");

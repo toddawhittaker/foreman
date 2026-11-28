@@ -434,7 +434,7 @@ func TestModSettingDefsRunOutlivesItsCallers(t *testing.T) {
 }
 
 // SPEC 9.6: each way the run fails is one of the page's errors, with
-// nothing left behind. Issue 965: only a failure the game itself reported
+// nothing left behind (SPEC 5.6). Only a failure the game itself reported
 // (its error line and a normal exit) or output that does not parse is kept;
 // any other may pass on its own and runs again.
 func TestModSettingDefsErrors(t *testing.T) {

@@ -87,14 +87,14 @@ test("saving General and Restart schedule moves nothing on the page", async ({ p
     await page.goto("/settings/general");
     await expectStill(page, `${label} general`, [tabRow, "form.general-grid", "#act-general-save", "#general-snapshots-heading"], async () => {
       await page.locator("#act-general-save").click();
-      await expect(page).toHaveURL(/done=saved/);
+      await expect(page.locator("#toasts .toast--success")).toBeVisible();
     });
     await expect(page.locator("#toasts")).toContainText("Saved. The new settings apply from now on.");
 
     await page.goto("/settings/restart-schedule");
     await expectStill(page, `${label} schedule`, [tabRow, "#schedule-state", "form.setting-row", "#act-schedule-save"], async () => {
       await page.locator("#act-schedule-save").click();
-      await expect(page).toHaveURL(/done=saved/);
+      await expect(page.locator("#toasts .toast--success")).toBeVisible();
     });
   });
 });

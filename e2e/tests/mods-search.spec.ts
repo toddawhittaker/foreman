@@ -89,7 +89,7 @@ test("25 results: a list a page at a time, with Previous, a page box and Next ab
   await checkPage(page);
 });
 
-// SPEC 9.1, 9.2 (rulings 2, 3, 6, 9): "+" says it is working, then the row
+// SPEC 9.1, 9.2: "+" says it is working, then the row
 // says "In plan" with "−" and the panel shows the pick with what it needs.
 test("+ adds a mod in place: Adding…, In plan with −, and the panel's tree", { tag: "@looks" }, async ({ page }) => {
   await page.goto("/worlds/base/mods");
@@ -177,7 +177,7 @@ test("two picks share a dependency: it shows once naming both, counted once, wit
   await expect(rails).toContainText("Will update to 1.1.0");
   await expect(rails.locator(".plan-tree__why").first()).toHaveText("Needed by fp-rails");
   // Each name links to its portal page in a new tab, apart from the cross; a
-  // mod the portal lacks is not linked (ruling on #623).
+  // mod the portal lacks is not linked (SPEC 9.15).
   const railsLink = rails.getByRole("link", { name: "fp-rails on the mod portal, opens in a new tab" });
   await expect(railsLink).toHaveAttribute("href", "https://mods.factorio.com/mod/fp-rails");
   await expect(railsLink).toHaveAttribute("target", "_blank");

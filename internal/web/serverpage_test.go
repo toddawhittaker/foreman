@@ -206,7 +206,7 @@ func TestNetworkRefusalIsShown(t *testing.T) {
 
 var reAnnounce = regexp.MustCompile(`<div hx-swap-oob="innerHTML:#announcer">([^<]*)</div>`)
 
-var reToast = regexp.MustCompile(`<div class="toast toast--(\w+)" data-toast(?: data-toast-key="[^"]*")?>\s*(?:data: )?<p class="toast__text"><strong>[^<]*</strong> <span data-toast-text>([^<]*)</span>`)
+var reToast = regexp.MustCompile(`<div class="toast toast--(\w+)" data-toast(?: data-toast-key="[^"]*")?>\s*(?:data: )?<p class="toast__text"><strong>[^<]*</strong> <span data-toast-text>(.*?)</span></p>`)
 
 // DESIGN 7.5, A2: a live page reads out a state change, and a failed
 // operation in its place; a finished one's result is a toast, which reads
@@ -226,7 +226,8 @@ func TestLiveAnnouncements(t *testing.T) {
 			said = append(said, m[1])
 		}
 		for _, m := range reToast.FindAllStringSubmatch(rec.Body.String(), -1) {
-			toasts = append(toasts, m[1]+": "+m[2])
+			// The Done toast's time is a <time> element; its words are what count.
+			toasts = append(toasts, m[1]+": "+reTag.ReplaceAllString(m[2], ""))
 		}
 		toasted = strings.Join(toasts, " | ")
 		return strings.Join(said, " | ")

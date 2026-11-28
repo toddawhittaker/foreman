@@ -140,7 +140,7 @@ test.describe("with the fake game", () => {
     ]);
   });
 
-  // #964: a fresh map answers /time with an empty line. The history says no
+  // SPEC 8.4: a fresh map answers /time with an empty line. The history says no
   // reply came, rather than an empty box, and the next command still gets its own.
   test("a blank reply is shown as no reply", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);

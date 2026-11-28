@@ -37,7 +37,7 @@ test("the component page shows each group in both themes", { tag: "@looks" }, as
   await checkPage(page);
 });
 
-// DESIGN 7, docs/EPIC-fixes-20.md ruling 2: a specimen on the component page is
+// DESIGN 7: a specimen on the component page is
 // the real component, so its box and its key styles equal the same component on
 // a page of the app, in both themes. Each pair names a page that draws the
 // component and the specimen's selector inside a theme's pane.
@@ -104,6 +104,21 @@ interface Pair {
   widths?: readonly number[];
   // Open the account menu on the real page first.
   menu?: boolean;
+  // Compare the look under the pointer.
+  hover?: boolean;
+}
+
+// Puts the pointer on a component and waits for its colour transitions, so
+// the look read is the hover look, not one part way there. The mouse moves to
+// the box's centre itself: Playwright's hover waits on the live Server page,
+// which keeps redrawing, until the test times out.
+async function point(el: Locator) {
+  const first = el.first();
+  await first.evaluate((n) => n.scrollIntoView({ block: "center", behavior: "instant" }));
+  const box = (await first.boundingBox())!;
+  await first.page().mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+  await expect.poll(() => first.evaluate((n) => n.matches(":hover")), { message: "the pointer is on it" }).toBe(true);
+  await first.evaluate((n) => Promise.all(n.getAnimations().map((a) => a.finished)));
 }
 
 const wide = [1280] as const;
@@ -131,6 +146,7 @@ const server: Pair[] = [
   { name: "primary action", real: "#act-snapshot", design: ".status-card--running .server-actions .button--primary", box: "both" },
   { name: "restart", real: "#act-restart", design: ".status-card--running [data-design-icon=restart]", box: "both" },
   { name: "stop", real: "#act-stop", design: ".status-card--running [data-design-icon=stop]", box: "both", margins: true },
+  { name: "stop under the pointer", real: "#act-stop", design: ".status-card--running [data-design-icon=stop]", box: "both", hover: true },
   { name: "emergency actions", real: ".emergency > summary", design: ".status-card--running .emergency > summary", box: "both" },
   { name: "stat", real: ".plate .stat", design: ".status-card--running .stat", box: "height" },
   { name: "meter", real: ".plate .meter", design: ".status-card--running .meter", box: "height" },
@@ -224,11 +240,16 @@ const generate: Pair[] = [
 ];
 
 // A snapshot taken first gives the page its newest-snapshots list; its Done
-// message is a toast, which no pair measures.
+// message is a toast, which no pair measures. It is closed, so it lies over
+// no control the pointer is put on.
 async function takeSnapshot(page: Page) {
   if ((await page.locator(".recent-snaps__list").count()) > 0) return;
   await page.locator("#act-snapshot").click();
   await expect(page.locator(".recent-snaps__list")).toBeVisible(live);
+  const toast = page.locator("#toasts [data-toast]");
+  await expect(toast).toHaveCount(1, live);
+  await toast.locator("[data-toast-close]").click();
+  await expect(toast).toHaveCount(0);
 }
 
 test.describe("specimens match the real components", () => {
@@ -266,14 +287,20 @@ test.describe("specimens match the real components", () => {
         await prepare?.(page);
         for (const p of pairs) {
           if (p.menu) await openMenu(page);
+          // The account menu the pairs before left open would lie over it.
+          if (p.hover) await page.evaluate(() => document.querySelectorAll<HTMLDetailsElement>("header.site details[open]").forEach((d) => (d.open = false)));
+          if (p.hover) await point(page.locator(p.real));
           real[p.name] = await look(page.locator(p.real), p.boxAt?.[width] ?? p.box ?? "both", p.margins);
+          if (p.hover) await page.mouse.move(0, 0);
         }
       }
       await page.goto("/design");
       const pane = page.locator(`.design-pane[data-theme="${theme}"]`);
       for (const { pairs } of here) {
         for (const p of pairs) {
+          if (p.hover) await point(pane.locator(p.design));
           expect.soft(await look(pane.locator(p.design), p.boxAt?.[width] ?? p.box ?? "both", p.margins), `${theme} at ${width}: ${p.name}`).toEqual(real[p.name]);
+          if (p.hover) await page.mouse.move(0, 0);
         }
       }
     }
