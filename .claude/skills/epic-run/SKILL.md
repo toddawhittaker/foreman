@@ -163,9 +163,10 @@ docs/EPIC-<n>.md on the epic branch; read your task's row.
 - Before the PR (fast checks only): every command you run must finish in
   under 3 minutes, in the foreground. Run `make check-go fmt-check vet lint
   typecheck`, `go test` for the packages you changed (each under `timeout
-  170`), and the e2e specs for the pages your files touch (`make e2e
+  170`), and only the e2e spec files you edited or added (`make e2e
   E2E_ARGS="tests/a.spec.ts ... --workers=4"`, split so each run is under
-  3 minutes). Never run the full `make verify`, the full `make e2e`,
+  3 minutes). The orchestrator runs every spec for the pages your files
+  touch on the merge with the epic head, so do not run those too. Never run the full `make verify`, the full `make e2e`,
   `make test-game` or `make e2e-game`: the orchestrator runs `make verify`
   and the real-game checks, CI runs the full suite, and failures come
   back to you. Report the commands and counts.

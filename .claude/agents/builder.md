@@ -6,7 +6,7 @@ description: |
   what it left out. Use for ordinary feature and refactor work with a
   clear target.
 model: opus
-effort: low
+effort: medium
 tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(Explore)
 hooks:
   Stop:
