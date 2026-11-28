@@ -1,12 +1,12 @@
 {{define "title"}}{{t "audit.title"}}{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "audit-log"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.auditlog"))}}{{end}}
+{{define "head-title"}}{{t "audit.title"}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "audit-log"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.auditlog"))}}
-<h1>{{t "audit.title"}}</h1>
-{{template "rail" $}}
 <p class="page-intro">{{t "audit.intro"}}</p>
 
 {{- /* A plain GET form: the filters live in the address, so a filtered view can be bookmarked and the Newer and Older links keep them. One row of controls that wraps only when it must. */}}
@@ -86,9 +86,9 @@
     </tbody>
   </table>
   {{- else if .Filtered}}
-  <p id="audit-empty">{{t "audit.empty.filtered"}}</p>
+  {{template "empty" (empty "settings" (t "audit.empty.filtered") "audit-empty")}}
   {{- else}}
-  <p id="audit-empty">{{t "audit.empty"}}</p>
+  {{template "empty" (empty "settings" (t "audit.empty") "audit-empty")}}
   {{- end}}
   {{- if or .Newer .Older}}
   <nav class="actions" aria-label="{{t "audit.pager"}}">

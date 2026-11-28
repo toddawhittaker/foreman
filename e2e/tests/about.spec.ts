@@ -142,7 +142,9 @@ test("the dialog and the page show the wordmark above the heading", { tag: "@loo
     expect(shown.width).toBeGreaterThan(150);
     const words = await heading.evaluate((h) => {
       const range = document.createRange();
-      range.selectNodeContents([...h.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim())!);
+      // On the page the words and the wordmark sit in the header's title, in one box.
+      const host = h.querySelector(".about__heading") ?? h;
+      range.selectNodeContents([...host.childNodes].find((n) => n.nodeType === Node.TEXT_NODE && n.textContent!.trim())!);
       return range.getBoundingClientRect().top;
     });
     expect(words, "the words sit under the wordmark").toBeGreaterThanOrEqual(shown.y + shown.height);

@@ -225,7 +225,7 @@ func TestAPITokenMCPSwitch(t *testing.T) {
 		t.Fatal("MCP is not off by default")
 	}
 	hn.wantRedirect(hn.post(pathAPITokenMCP, url.Values{"mcp": {"on"}}, withCookie(c)), PathAPITokens+"?done=mcp-on")
-	if body := hn.get(PathAPITokens+"?done=mcp-on", withCookie(c)).Body.String(); !strings.Contains(body, `name="mcp" value="off"`) || !strings.Contains(body, `id="done-message"`) {
+	if body := hn.get(PathAPITokens+"?done=mcp-on", withCookie(c)).Body.String(); !strings.Contains(body, `name="mcp" value="off"`) || !strings.Contains(body, `class="toast toast--success" data-toast`) {
 		t.Error("the page does not show MCP on")
 	}
 	hn.post(pathAPITokenMCP, url.Values{"mcp": {"off"}}, withCookie(c))

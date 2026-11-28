@@ -11,21 +11,13 @@
 
 {{define "scripts"}}<script src="{{static "toggletip.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "general"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs "" (t "common.nav.settings") "" (t "common.menu.general"))}}{{end}}
+{{define "head-title"}}{{t "common.menu.general"}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "general"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-{{template "crumb" (crumbs "" (t "common.nav.settings") "" (t "common.menu.general"))}}
-<h1>{{t "common.menu.general"}}</h1>
-{{template "rail" $}}
-{{- if .Saved}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{t "general.done"}}</p>
-  {{- if .Trims}}
-  <p id="general-trim">{{t "general.trim.snapshots" "count" .Trim.Snapshots}} {{t "general.trim.worlds" "count" .Trim.Worlds}}</p>
-  {{- end}}
-</div>
-{{- end}}
 {{template "summary" .Problems}}
 <form method="post" action="{{.Path}}" class="panel setting-rows general-grid" novalidate data-tips>
   {{template "required-note"}}
@@ -135,12 +127,8 @@
     </div>
   </section>
   {{- /* The save bar sticks to the window's foot, as Game settings' does; where the values come from leads it. */}}
-  <div class="actions form-foot">
-    <p class="hint form-foot__note" id="general-source">{{t "general.source"}}</p>
-    <button type="submit" class="button button--primary" id="act-general-save">{{t "general.save"}}</button>
-  </div>
+  {{template "form-foot" (formFoot "note" (t "general.source") "noteID" "general-source" "submit" (t "general.save") "submitID" "act-general-save")}}
 </form>
 {{end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

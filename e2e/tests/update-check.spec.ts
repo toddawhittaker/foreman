@@ -17,10 +17,10 @@ test("About shows a newer release, and the General switch hides it", async ({ pa
   // Off, then on: turning it on asks GitHub at once, rather than a minute after start.
   await updateSwitch(page).uncheck();
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page.locator("#done-message")).toBeVisible();
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
   await updateSwitch(page).check();
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page.locator("#done-message")).toBeVisible();
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
 
   const notice = page.locator("#about-newer");
   await expect(async () => {
@@ -36,7 +36,7 @@ test("About shows a newer release, and the General switch hides it", async ({ pa
   await page.goto("/settings/general");
   await updateSwitch(page).uncheck();
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page.locator("#done-message")).toBeVisible();
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
   await page.goto("/about");
   await expect(page.locator("#about-facts")).toBeVisible();
   await expect(notice).toHaveCount(0);

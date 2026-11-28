@@ -276,6 +276,33 @@ test("just above the stacking width, long names and a long detail do not scroll 
   await checkPage(page);
 });
 
+// The longest English action label beside a long time, user, token and
+// detail fits the table in its plate on a laptop-wide screen too, where the
+// cells keep one line where they can (#962).
+for (const width of [1920, 1440, 1280, 1100]) {
+  test(`at ${width} px the longest action label and long names keep the table inside its plate`, { tag: "@looks" }, async ({ page, foreman }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await createAdmin(page);
+    seedWorld(foreman);
+    const now = Math.floor(Date.now() / 1000);
+    seed(foreman, [
+      { time: now - 30, username: "u".repeat(32), action: "api-set", world: "base", detail: `token="${"T".repeat(32)}" on=true ` + "x".repeat(120), token: "T".repeat(32) },
+      { time: now - 20, username: "alice", action: "console", world: null, detail: "short", token: "Claude" },
+    ]);
+    await openAuditLog(page);
+    await expect(page.locator("#audit-list")).toHaveCSS("display", "table");
+    await expect(page.locator("#audit-list")).toContainText("REST API access turned on or off");
+    const root = await page.evaluate(() => ({ scroll: document.documentElement.scrollWidth, client: document.documentElement.clientWidth }));
+    expect(root.scroll).toBeLessThanOrEqual(root.client);
+    const table = await page.locator("#audit-list").evaluate((el) => {
+      const plate = el.closest(".panel")!.getBoundingClientRect();
+      const r = el.getBoundingClientRect();
+      return { inPlate: r.left >= plate.left && r.right <= plate.right, fitsParent: r.right <= el.parentElement!.getBoundingClientRect().right - parseFloat(getComputedStyle(el).marginRight) + 1 };
+    });
+    expect(table).toEqual({ inPlate: true, fitsParent: true });
+  });
+}
+
 // Action labels run long in other languages (German's longest is 52 characters);
 // they wrap between words instead of pushing the table past its container.
 test("just above the stacking width, a long German action label does not scroll the page sideways", { tag: "@looks" }, async ({ page, foreman, context }) => {

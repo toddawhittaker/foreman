@@ -44,7 +44,7 @@ async function turnOn(page: Page) {
   await expect(page.locator("#public-mods-state")).toContainText("The public mods page is off");
   await checkPage(page);
   await page.getByRole("button", { name: "Turn on the public mods page" }).click();
-  await expect(page.locator("#done-message")).toHaveText("Done: Turned the public mods page on.");
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Turned the public mods page on.");
   await expect(page.locator("#public-mods-state")).toContainText("The public mods page is on.");
   await checkPage(page);
 }
@@ -109,7 +109,7 @@ test("off by default, turned on in settings, then players download without signi
 
     // Turning it off is one click and takes effect at once.
     await page.getByRole("button", { name: "Turn off the public mods page" }).click();
-    await expect(page.locator("#done-message")).toHaveText("Done: Turned the public mods page off.");
+    await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Turned the public mods page off.");
     expect((await player.request.get("/public/mods")).status()).toBe(404);
     expect(audits(foreman).map((a) => a.split(" ")[1])).toEqual(["on", "off"]);
   } finally {

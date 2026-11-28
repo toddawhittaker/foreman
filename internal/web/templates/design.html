@@ -11,9 +11,13 @@
 
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.design.title"))}}
-<header class="page-head">
+{{- /* The page's own header has the shared page header's shape. It is
+     written out because this page defines the header's slots for its
+     specimens below. */}}
+<header class="pagehead">
+  <div class="pagehead__crumb">{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.design.title"))}}</div>
   <h1>{{t "common.design.title"}}</h1>
+  <div class="pagehead__actions"></div>
 </header>
 {{- range .Groups}}
 {{template "design-section" ($.Page.Section .)}}
@@ -62,7 +66,6 @@
   <li><a href="#design-buttons" class="button button--risky">{{t "worlds.world.delete.button"}}</a><code>button--risky</code></li>
   <li><button type="button" class="button button--icon"><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></button><code>button--icon</code></li>
   <li><a href="#design-buttons" class="button button--remove"><span aria-hidden="true">{{t "worlds.snapshots.delete"}}</span><span class="visually-hidden">{{t "worlds.snapshots.delete.button"}}</span></a><code>button--remove</code></li>
-  <li><a href="#design-buttons" class="button button--remove button--revoke">{{t "apitokens.revoke"}}</a><code>button--revoke</code></li>
   <li><a href="#design-buttons" class="button button--ghost">{{t "settings.cancel"}}</a><code>button--ghost</code></li>
   <li><button type="button" class="button" disabled>{{t "worlds.snapshots.take.button"}}</button><code>disabled</code></li>
   <li><button type="button" class="button button--primary" disabled aria-busy="true">{{t "server.state.starting"}}</button><code>aria-busy</code></li>

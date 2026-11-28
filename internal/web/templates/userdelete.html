@@ -1,11 +1,12 @@
 {{define "title"}}{{t "users.delete.question" "name" .Page.User.Username}}{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "user"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") usersPath (t "common.menu.users"))}}{{end}}
+{{define "head-title"}}{{t "users.delete.question" "name" .Page.User.Username}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "user"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-<h1 id="confirm-heading">{{t "users.delete.question" "name" .User.Username}}</h1>
-{{template "rail" $}}
 <section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>

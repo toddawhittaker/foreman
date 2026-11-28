@@ -2,16 +2,14 @@
 
 {{define "scripts"}}<script src="{{static "settingsdraft.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .WorldName "" (t "worlds.world.settings"))}}{{end}}{{end}}
+{{define "head-title"}}{{.Page.WorldName}}{{if .Page.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
 {{- $page := .}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .WorldName "" (t "worlds.world.settings"))}}
-<div class="title-row">
-<h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-</div>
-{{template "rail" $}}
 {{- if not .Done.IsZero}}
 <div class="message message--success" id="done-message" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>

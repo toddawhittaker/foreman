@@ -137,7 +137,7 @@ func TestGeneralSaveStoresAuditsAndApplies(t *testing.T) {
 			t.Errorf("%s audited without a change: %v", action, got)
 		}
 	}
-	if body := hn.get(generalPath()+"?done=saved", withCookie(c)).Body.String(); !strings.Contains(body, `id="done-message"`) || !strings.Contains(body, `value="3"`) {
+	if body := hn.get(generalPath()+"?done=saved", withCookie(c)).Body.String(); !strings.Contains(body, `class="toast toast--success" data-toast`) || !strings.Contains(body, `value="3"`) {
 		t.Error("the done page does not show the saved values")
 	}
 }
@@ -201,8 +201,10 @@ func TestGeneralLoweringRetentionDeletesNothingAndCounts(t *testing.T) {
 		t.Fatalf("%d snapshots after saving, %v; want 4", len(list), err)
 	}
 	body := hn.get(generalPath()+"?done=saved", withCookie(c)).Body.String()
-	if !strings.Contains(body, `id="general-trim"`) || !strings.Contains(body, "3 automatic snapshots will be removed") || !strings.Contains(body, "Worlds affected: 1.") {
-		t.Errorf("the page does not count what will go:\n%s", between(body, `id="general-trim"`, "</div>"))
+	// The count sums up the save, so it is in the toast (DESIGN 6, "Toasts").
+	toast := between(body, `<div id="toasts" class="toasts">`, "</div></div>")
+	if !strings.Contains(toast, "Saved. The new settings apply from now on.") || !strings.Contains(toast, "3 automatic snapshots will be removed") || !strings.Contains(toast, "Worlds affected: 1.") {
+		t.Errorf("the page does not count what will go:\n%s", toast)
 	}
 	// The next automatic snapshot trims the world to the new figure.
 	hn.clock.Advance(time.Minute)

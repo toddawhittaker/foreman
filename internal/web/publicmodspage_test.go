@@ -78,7 +78,7 @@ func TestPublicModsPageShowsModsAndMarks(t *testing.T) {
 // is one line.
 func TestPublicModsPageEmptyStates(t *testing.T) {
 	body := renderPublic(t, PublicModsData{})
-	if !strings.Contains(body, `id="public-none">No game is running now`) || strings.Contains(body, "public-mods__name") {
+	if !strings.Contains(body, `id="public-none"><span class="empty__text">No game is running now`) || strings.Contains(body, "public-mods__name") {
 		t.Errorf("no game running: want the message and no mods:\n%s", body)
 	}
 	body = renderPublic(t, PublicModsData{PortalUnchecked: true, Worlds: []PublicWorld{{ID: "w", Name: "W", GameVersion: "2.0.77"}}})
