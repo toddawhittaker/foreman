@@ -719,12 +719,12 @@ startGenerateWithForm(() => {
     e.preventDefault();
   });
 
-  // The wait box appearing is not read out, so the start is said too.
+  // The working bar appearing is not read out, so the start is said too.
   document.body.addEventListener("htmx:beforeRequest", (e) => {
     if (!isPreview(e)) return;
     setBusy(true);
-    const wait = document.querySelector("#preview-wait .working__text");
-    if (wait) announce(wait.textContent.trim());
+    const status = document.getElementById("preview-status");
+    if (status && status.dataset.wait) announce(status.dataset.wait);
   });
   document.body.addEventListener("htmx:afterRequest", (e) => { if (isPreview(e)) setBusy(false); });
 

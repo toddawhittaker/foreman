@@ -615,7 +615,7 @@ func TestGenerateFillsANewPresetBeforeMakingAnything(t *testing.T) {
 	if rec.Code != http.StatusOK || hn.config(id, world.MapGenSettingsFile).Found {
 		t.Fatalf("status %d, or files written", rec.Code)
 	}
-	for _, want := range []string{`id="map-refilled"`, "filled from the preset “Death world”", `name="filled_from" value="death-world"`, `type="text" value="3"`} {
+	for _, want := range []string{`<div class="toast toast--error" data-toast>`, "filled from the preset “Death world”", `name="filled_from" value="death-world"`, `type="text" value="3"`} {
 		if !strings.Contains(body, want) {
 			t.Errorf("page lacks %q", want)
 		}
@@ -1080,5 +1080,19 @@ func TestANewPreviewReplacesTheUsersLastOne(t *testing.T) {
 	}
 	if rec := hn.get(second, withCookie(c)); rec.Code != http.StatusOK {
 		t.Errorf("the new preview: %d", rec.Code)
+	}
+}
+
+// Generate's old action row is gone from every page (DESIGN 8.6), so no
+// stylesheet rule names it either.
+func TestNoStylesheetNamesGenActions(t *testing.T) {
+	for _, p := range stylesheetParts {
+		css, err := staticFS.ReadFile("static/css/" + p.File)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if strings.Contains(string(css), ".gen-actions") {
+			t.Errorf("static/css/%s still names .gen-actions", p.File)
+		}
 	}
 }

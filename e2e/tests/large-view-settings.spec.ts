@@ -109,7 +109,6 @@ test.describe("on a wide screen", () => {
     await expect(frame(page)).toHaveAttribute("aria-busy", "true");
     const drawing = page.locator("#large-drawing-wait .working");
     await expect(drawing).toBeVisible();
-    await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
     await expect(drawing).toBeVisible();
     expect(await drawing.evaluate((p) => p.closest("[role=status], [aria-live]"))).toBeNull();
     await expect(status(page)).not.toHaveText(/Drawing/);
@@ -157,14 +156,12 @@ test.describe("on a wide screen", () => {
     await range.focus();
     await page.keyboard.press("ArrowRight");
     await expect(drawing).toBeVisible();
-    await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
     release();
     await expect(status(page)).toHaveText("Map preview ready.");
     await expect(bar).toBeHidden();
 
     await page.keyboard.press("ArrowRight");
     await expect(drawing).toBeVisible();
-    await expect(drawing).toHaveText("Drawing the map preview for the current settings…");
     await expect(status(page)).not.toHaveText(/ready/);
     // The working bar shows under reduced motion too, standing still (DESIGN 7.6).
     await expect(bar).toBeVisible();

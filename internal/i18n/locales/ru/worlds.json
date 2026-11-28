@@ -427,7 +427,6 @@
   "worlds.generate.preview.size_hint": "Какая часть карты вокруг её центра показана в предпросмотре. Метка показывает, где начинают игроки.",
   "worlds.generate.error.preview_size": "Выберите один из размеров в списке.",
   "worlds.generate.territories.label": "Показывать территории разрушителей",
-  "worlds.generate.territories.hint": "Поиск занимает на несколько секунд больше.",
   "worlds.generate.territories.finding": "Поиск территорий разрушителей…",
   "worlds.generate.territories.counts": "Территории разрушителей на этом изображении: {list}.",
   "worlds.generate.territories.none": "На этом изображении нет территорий разрушителей.",

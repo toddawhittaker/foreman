@@ -415,7 +415,6 @@
   "worlds.generate.preview.size_hint": "Cuánto del mapa, alrededor de su centro, muestra la vista previa. El marcador señala dónde empiezan los jugadores.",
   "worlds.generate.error.preview_size": "Elige uno de los tamaños de la lista.",
   "worlds.generate.territories.label": "Mostrar territorios de demoledores",
-  "worlds.generate.territories.hint": "Encontrarlos tarda unos segundos más.",
   "worlds.generate.territories.finding": "Buscando los territorios de los demoledores…",
   "worlds.generate.territories.counts": "Territorios de demoledores en esta imagen: {list}.",
   "worlds.generate.territories.none": "Esta imagen no tiene territorios de demoledores.",
