@@ -19,3 +19,12 @@ func TestSettingsRawRefusalIsAToast(t *testing.T) {
 		t.Fatalf("a refused save: %+v, want one error toast", got)
 	}
 }
+
+// A save refused because the world is read-only is told once, by the page's
+// own read-only note, not by a toast as well.
+func TestSettingsRawReadOnlyRefusalIsNotToastedTwice(t *testing.T) {
+	why := i18n.M("settings.raw.title", "file", "a", "world", "b")
+	if got := (SettingsRawPage{ReadOnly: why, Error: why}).toasts(); got != nil {
+		t.Errorf("a read-only refusal made toasts: %+v", got)
+	}
+}

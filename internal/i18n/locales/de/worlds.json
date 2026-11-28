@@ -415,7 +415,6 @@
   "worlds.generate.preview.size_hint": "Wie viel von der Karte rund um ihre Mitte die Vorschau zeigt. Die Markierung zeigt, wo die Spieler starten.",
   "worlds.generate.error.preview_size": "Wähle eine der Größen aus der Liste.",
   "worlds.generate.territories.label": "Zertrümmerer-Territorien anzeigen",
-  "worlds.generate.territories.hint": "Sie zu finden dauert ein paar Sekunden länger.",
   "worlds.generate.territories.finding": "Zertrümmerer-Territorien werden gesucht …",
   "worlds.generate.territories.counts": "Zertrümmerer-Territorien in diesem Bild: {list}.",
   "worlds.generate.territories.none": "Dieses Bild enthält keine Zertrümmerer-Territorien.",

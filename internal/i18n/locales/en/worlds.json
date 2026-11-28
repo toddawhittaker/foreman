@@ -415,7 +415,6 @@
   "worlds.generate.preview.size_hint": "How much of the map, around its center, the preview shows. The pin is where players start.",
   "worlds.generate.error.preview_size": "Choose one of the sizes in the list.",
   "worlds.generate.territories.label": "Show demolisher territories",
-  "worlds.generate.territories.hint": "Finding them takes a few seconds more.",
   "worlds.generate.territories.finding": "Finding the demolisher territories…",
   "worlds.generate.territories.counts": "Demolisher territories in this picture: {list}.",
   "worlds.generate.territories.none": "This picture has no demolisher territories.",

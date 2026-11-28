@@ -45,12 +45,17 @@
     </datalist>
     {{- end}}
     {{- if .Error.IsZero}}
+    {{/* The script moves Preview size and the redraw's line here, above the boxes and the picture, so
+         the order seen and the order tabbed agree, and a redraw that drops a box or changes the
+         picture's height never moves them (DESIGN 8.6, 8.8). */}}
+    <div class="preview-size-slot" id="preview-status-slot"></div>
+    <div class="preview-size-slot" id="preview-size-slot"></div>
     {{- with .Territories}}{{if .Show}}
     {{/* Off by default, as reading them takes several seconds more (SPEC 5.6). Under the box, the
-         working bar's spot, which keeps its room while idle, so ticking moves nothing (#975). */}}
+         working bar's spot, which keeps its room while idle, so ticking moves nothing (DESIGN 8.8). */}}
     <div class="field territory-box">
       <label class="check"><input type="checkbox" id="preview-territories" name="territories" value="1"{{if .Checked}} checked{{end}}> {{t "worlds.generate.territories.label"}}</label>
-      <div class="work-slot" id="preview-territories-work" data-idle>{{template "working" (t "worlds.generate.territories.finding")}}</div>
+      <div class="work-slot" id="preview-territories-work" data-idle aria-hidden="true">{{template "working" (t "worlds.generate.territories.finding")}}</div>
     </div>
     {{- end}}{{end}}
     {{- $amounts := and (not .All) .Pictures}}
@@ -59,12 +64,10 @@
          the box has no name and starts unticked; the script keeps the choice while the page lives
          and counts after the picture. Counting needs script, so the box does too (SPEC 5.6). */}}
     {{- /* Under the box, the working bar's spot while it counts: seen, not said, as the announcer says
-         the whole sentence once (DESIGN 8.8). It keeps its room while idle (#975). */}}
+         the whole sentence once (DESIGN 8.8). It keeps its room while idle. */}}
     <div class="js-only"><div class="resource-box"><label class="check"><input type="checkbox" id="preview-amounts"> {{t "worlds.generate.resources.label"}}</label>
       <div class="work-slot" id="preview-amounts-work" data-idle aria-hidden="true">{{template "working" (t "worlds.generate.resources.counting_short")}}</div></div></div>
     {{- end}}
-    {{/* The script moves Preview size here, above the picture, so the order seen and the order tabbed agree (DESIGN 8.6). */}}
-    <div class="preview-size-slot" id="preview-size-slot"></div>
     <ul class="pictures" role="list">
       {{- range .Pictures}}
       {{- $terr := $.Preview.IsTerritoryPicture .}}
@@ -83,14 +86,16 @@
         <template id="territory-failed">{{template "territory-result" $.Preview.Territories.RequestFailed}}</template>
         {{- $chart := eq .Planet $.Preview.ChartPlanet}}
         {{- if $chart}}<div class="picture-actions">{{end}}
-        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}">
-          {{- if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}</a>
+        {{- /* The link's words change with what it asks for; data-room, its longest words, holds its box,
+             so neither it nor the button after it moves (DESIGN 8.8). */}}
+        <a href="{{$.Preview.DownloadOf .}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-territories="{{t "worlds.generate.territories.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}" data-both="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}"{{if $chart}} data-room="{{t "worlds.generate.resources.download_both" "planet" (msg .Name)}}"{{end}}>
+          {{- if $chart}}<span data-label>{{end}}{{if $.Preview.Territories.Drawn}}{{t "worlds.generate.territories.download" "planet" (msg .Name)}}{{else}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{end}}{{if $chart}}</span>{{end}}</a>
         {{- if $chart}} {{template "chart-offer" $.Preview}}</div>{{template "tip-text" $.Preview.ChartTip}}{{end}}
         {{- else}}
         {{/* The script adds the amounts, and says so, while the box above is ticked and they are counted (SPEC 5.6). */}}
         {{- $chart := eq .Planet $.Preview.ChartPlanet}}
         {{- if $chart}}<div class="picture-actions">{{end}}
-        <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}">{{t "worlds.generate.preview.download" "planet" (msg .Name)}}</a>
+        <a href="{{.DownloadPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download" "planet" (msg .Name)}}" data-amounts="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}"{{if $chart}} data-room="{{t "worlds.generate.resources.download" "planet" (msg .Name)}}"{{end}}>{{if $chart}}<span data-label>{{end}}{{t "worlds.generate.preview.download" "planet" (msg .Name)}}{{if $chart}}</span>{{end}}</a>
         {{- if $chart}} {{template "chart-offer" $.Preview}}</div>{{template "tip-text" $.Preview.ChartTip}}{{end}}
         {{- end}}
       </li>
@@ -220,7 +225,7 @@
          sends; the script keeps the two the same (SPEC 5.6, DESIGN 8.8). */}}
     <div class="large-view__territories" id="large-territories-box" hidden>
       <label class="check"><input type="checkbox" id="large-territories"> {{t "worlds.generate.territories.label"}}</label>
-      {{- /* The working bar's spot, held while idle; the status line says the sentence (#975). */}}
+      {{- /* The working bar's spot, held while idle; the status line says the sentence (DESIGN 8.8). */}}
       {{- /* Shown while the request has failed; the status line says why. */}}
       <button type="button" class="button" id="large-territories-retry" data-territory-retry hidden>{{t "worlds.generate.territories.retry"}}</button>
       <div class="work-slot" id="large-territories-work" data-idle aria-hidden="true">{{template "working" (t "worlds.generate.territories.finding")}}</div>
@@ -230,7 +235,7 @@
     <div class="resource-amounts" id="large-amounts-bar" data-ready="{{t "worlds.generate.resources.ready"}}">
       <label class="check"><input type="checkbox" id="large-amounts"> {{t "worlds.generate.resources.label"}}</label>
       {{- /* The bar is seen; the status line says the sentence once as the count starts, after any news of the picture or planet, and says when the amounts are ready (SPEC 17.15). */}}
-      {{- /* Under the box, the working bar's spot, held while idle (#975). The whole sentence is the
+      {{- /* Under the box, the working bar's spot, held while idle (DESIGN 8.8). The whole sentence is the
            status line's, said as the count starts; the bar shows only the short word (DESIGN 8.8). */}}
       <div class="work-slot" id="large-amounts-work" data-idle aria-hidden="true">{{template "working" (t "worlds.generate.resources.counting_short")}}</div>
       <p class="visually-hidden" id="large-counting-text">{{t "worlds.generate.resources.counting"}}</p>

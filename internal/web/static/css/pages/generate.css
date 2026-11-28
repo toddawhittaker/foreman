@@ -667,14 +667,13 @@ form:has(#mode-exchange:checked) .achievements {
   visibility: hidden;
 }
 
-/* The redraw's working bar holds one line, idle or not, so a redraw never
-   moves what sits under the preview. Unlike the bar elsewhere its words do
-   not wrap under it: they are cut, and the faded picture says the rest
-   (DESIGN 8.8). */
+/* The redraw's working bar keeps its room, idle or not, so a redraw never
+   moves what sits under the preview (DESIGN 8.8). Under the preview its
+   words wrap beside the bar, so a narrow pane or large text shows them
+   whole; idle, the spot keeps the same lines unseen. On the large view's
+   held line they are cut, and the faded picture says the rest. */
 :is(.preview-status, .large-view__wait) > .working {
   flex-wrap: nowrap;
-  overflow: hidden;
-  white-space: nowrap;
 }
 
 :is(.preview-status, .large-view__wait) .working__bar {
@@ -682,7 +681,17 @@ form:has(#mode-exchange:checked) .achievements {
   min-inline-size: 3rem;
 }
 
-:is(.preview-status, .large-view__wait) .working__text {
+.preview-status .working__text {
+  min-inline-size: 0;
+  overflow-wrap: anywhere;
+}
+
+.large-view__wait > .working {
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.large-view__wait .working__text {
   min-inline-size: 0;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -741,7 +750,7 @@ html:has(.large-view[open]) {
 
 /* The title holds its line while paging empties and refills it, and takes
    the room its words leave, so the buttons after it never follow its width
-   from planet to planet (issue 984). The download and Star map buttons keep their
+   from planet to planet (DESIGN 8.8). The download and Star map buttons keep their
    places, unseen, while hidden. */
 .large-view__head h2 {
   flex: 1 1 12rem;
@@ -919,8 +928,9 @@ html:has(.large-view[open]) {
   }
 }
 
+/* The mirror of Next, clear of the same edge, on a planet and on the star map (DESIGN 8.23). */
 .large-view__edge--prev {
-  inset-inline-start: var(--space-2);
+  inset-inline-start: var(--space-5);
 }
 
 .large-view__edge--next {
@@ -1064,12 +1074,17 @@ html:has(.large-view[open]) {
   min-inline-size: 0;
 }
 
-/* A working bar's spot under the box whose work it shows (issue 975): the bar
+/* A working bar's spot under the box whose work it shows (DESIGN 8.8): the bar
    and its words, held unseen while idle, so its room never comes and goes
-   and ticking one box never moves another (ruling 1). The working partial
+   and ticking one box never moves another. The working partial
    takes no idle flag, so the spot carries it. */
 .work-slot[data-idle] {
   visibility: hidden;
+}
+
+/* A spot that is htmx's indicator shows while its request runs. */
+.work-slot.htmx-request {
+  visibility: visible;
 }
 
 .resource-amounts__result {
@@ -1088,7 +1103,7 @@ html:has(.large-view[open]) {
 
 /* In the large view each box is one target tall with its working spot
    under it; what the count shows takes the room beside them and never
-   widens their column, so the territories box keeps its place (issue 975). */
+   widens their column, so the territories box keeps its place (DESIGN 8.8). */
 #large-amounts-bar {
   display: grid;
   grid-template-columns: minmax(0, 1fr);
@@ -1588,6 +1603,28 @@ html:has(.large-view[open]) {
   row-gap: var(--space-1);
 }
 
+/* A Download link whose words change keeps the box of its longest words
+   (data-room), drawn unseen in the same cell, so a longer label never moves
+   the button after it or wraps the line again (DESIGN 8.8). It takes the
+   line's room the button leaves and wraps its words there; a pane too narrow
+   for both puts the button on the next line in every state. The room's words
+   are no part of the link's name. */
+.picture-actions > a.download[data-room] {
+  display: inline-grid;
+  flex: 1 1 12rem;
+}
+
+.picture-actions > a.download[data-room] > [data-label],
+.picture-actions > a.download[data-room]::after {
+  grid-area: 1 / 1;
+}
+
+.picture-actions > a.download[data-room]::after {
+  content: attr(data-room);
+  content: attr(data-room) / "";
+  visibility: hidden;
+}
+
 .picture-actions #preview-chart-offer {
   display: flex;
   align-items: center;
@@ -1660,7 +1697,7 @@ html:has(.large-view[open]) {
   /* One picture is a square as wide as the column. Its size follows the
      column only, never what shows under it, so ticking Show resource
      amounts or opening its list adds below it and the pane scrolls, while
-     the picture keeps its box (issue 973). */
+     the picture keeps its box (DESIGN 8.8). */
   .gen-preview .pictures:not(:has(> li + li)) > li {
     inline-size: 100%;
   }
@@ -1759,7 +1796,7 @@ html:has(.large-view[open]) {
 /* Step 4's form is not one of the plates, so its foot bar is the framed bar
    a form foot is on its own, not pulled out to a plate's edges it does not
    have: pulled out, it ran 24 px past the content, and 4 px past a phone's
-   window (issue 987). */
+   window (DESIGN 8.6). */
 #newmap-body > .generate > .form-foot {
   margin: 0;
   padding-inline: var(--space-4);
@@ -1834,7 +1871,7 @@ html:has(.large-view[open]) {
     order: 2;
     /* They come first in the document but show under the preview, so the
        browser's scroll anchoring would hold them still and scroll the page
-       as the preview grows above them (ruling 1). */
+       as the preview grows above them (DESIGN 8.6). */
     overflow-anchor: none;
   }
 }
@@ -2190,7 +2227,7 @@ html:has(.large-view[open]) > body {
 }
 
 /* Previous and Next sit at the frame's two edges there too, mirror images;
-   the arrow keys still step through every picture without moving (issue 974). */
+   the arrow keys still step through every picture without moving (DESIGN 8.23). */
 @container large-view (min-width: 77rem) {
   .large-view[data-starmap] .large-view__body:has(> .large-view__settings) {
     grid-template-columns: minmax(0, 1fr);
@@ -2199,7 +2236,7 @@ html:has(.large-view[open]) > body {
 
 /* ==== Map settings: Preset and Seed on one row, Fill from a map exchange
    string on its own line under them, so opening it grows below its summary
-   and moves nothing (issue 986); each resource one row, its name in a start
+   and moves nothing (DESIGN 8.6); each resource one row, its name in a start
    column and its three sliders beside it. */
 @container generate (min-width: 62rem) {
   #map-section > #line-box {
@@ -2221,7 +2258,7 @@ html:has(.large-view[open]) > body {
 }
 
 /* The same rows on the Map settings page and in the large view's settings
-   column, one design (DESIGN 8.6, issue 977): the name in a start column of at
+   column, one design (DESIGN 8.6): the name in a start column of at
    most 11rem, the three sliders beside it, and each step's words under its
    slider rather than beside its name, so three fit a 34rem column. */
 @container map-section (min-width: 34rem) {

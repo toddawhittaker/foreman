@@ -1,4 +1,4 @@
-import { test, expect, createAdmin, seedWorld, image21, live } from "./foreman.js";
+import { test, expect, checkPage, createAdmin, seedWorld, image21, live } from "./foreman.js";
 import type { Page, Route } from "@playwright/test";
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -78,6 +78,23 @@ function addFakePlanet(dataDir: string, id: string) {
   writeFileSync(listFile, JSON.stringify(list));
 }
 
+// The end state of each step, so a box is read once what the step adds has landed.
+async function amountsDone(page: Page, root: "#preview" | "#large-view", on: boolean) {
+  const work = root === "#preview" ? "#preview-amounts-work" : "#large-amounts-work";
+  await expect(page.locator(`${work} .working`)).toBeHidden(live);
+  if (on) await expect(page.locator(`${root} .resources`).first()).toBeVisible(live);
+  else await expect(page.locator(`${root} .resources`)).toHaveCount(0, live);
+  if (on && root === "#preview") await expect(page.locator("#preview-amounts-result details.resource-text")).toBeVisible(live);
+  if (!on && root === "#preview") await expect(page.locator("#preview-amounts-result")).toBeEmpty(live);
+  await expect(page.locator("#preview")).not.toHaveAttribute("aria-busy", "true");
+}
+async function territoriesDone(page: Page, root: "#preview" | "#large-view") {
+  await expect(page.locator(root === "#preview" ? "#preview-territories-work .working" : "#large-territories-work .working")).toBeHidden(live);
+  await expect(page.locator(`${root} .map .territories`).first()).toBeVisible(live);
+  await expect(page.locator("#territory-result")).not.toBeEmpty(live);
+  await expect(page.locator("#preview")).not.toHaveAttribute("aria-busy", "true");
+}
+
 test.beforeEach(async ({ page, foreman, fakeGame }) => {
   await createAdmin(page);
   seedWorld(foreman);
@@ -98,10 +115,10 @@ async function openLarge(page: Page) {
   await expect.poll(() => page.locator("#large-img").evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
 }
 
-test("#984: steps 1, 3 and 4 put the crumb's row, the title and the step bar in one place", async ({ page, foreman }) => {
+test("#984: steps 1 to 4 put the crumb's row, the title and the step bar in one place", async ({ page, foreman }) => {
   const id = await openNewMap(page, { name: "Steps" });
   addFakePlanet(foreman.dataDir, id);
-  const paths = ["/generate", `${newMapPath(id)}/mod-settings`, newMapPath(id)];
+  const paths = ["/generate", `/worlds/${id}/mods`, `${newMapPath(id)}/mod-settings`, newMapPath(id)];
   await each(page, async (label) => {
     const seen: Record<string, Box>[] = [];
     for (const path of paths) {
@@ -117,8 +134,9 @@ test("#984: steps 1, 3 and 4 put the crumb's row, the title and the step bar in 
         steps: await box(page, "#flow-steps"),
       });
     }
-    expect(seen[1], `${label}: step 3 against step 1`).toEqual(seen[0]);
-    expect(seen[2], `${label}: step 4 against step 1`).toEqual(seen[0]);
+    expect(seen[1], `${label}: step 2 against step 1`).toEqual(seen[0]);
+    expect(seen[2], `${label}: step 3 against step 1`).toEqual(seen[0]);
+    expect(seen[3], `${label}: step 4 against step 1`).toEqual(seen[0]);
   });
 });
 
@@ -173,7 +191,7 @@ test("#975: in the panel, each box has its working bar under it, and ticking one
     await expect(page.locator("#preview-territories-work .working")).toBeHidden();
     expect(await snap(page, parts), `${label}: counting`).toEqual(at);
     await amounts.release();
-    await expect(page.locator("#preview-amounts-work .working")).toBeHidden(live);
+    await amountsDone(page, "#preview", true);
     expect(await snap(page, parts), `${label}: counted`).toEqual(at);
     // Territories, held: the same bar under its box, not the old line of words.
     const terr = hold(page, "/generate/preview/territories");
@@ -182,15 +200,21 @@ test("#975: in the panel, each box has its working bar under it, and ticking one
     await expect(page.locator("#preview-territories-work .working")).toBeVisible();
     await expect(page.locator("#preview-territories-work .working__bar")).toBeVisible();
     await expect(page.locator("#territory-result")).not.toContainText("Finding the demolisher territories");
+    // The bar is hidden from screen readers, so the start is said (WCAG 4.1.3).
+    await expect(page.locator("#preview-territories-work")).toHaveAttribute("aria-hidden", "true");
+    await expect(page.locator("#announcer")).toHaveText("Finding the demolisher territories…");
     expect(await snap(page, parts), `${label}: finding`).toEqual(at);
+    // A slot busy passes axe too.
+    await checkPage(page);
     await terr.release();
-    await expect(page.locator("#preview-territories-work .working")).toBeHidden(live);
     // The amounts are counted again for the new picture; once both are done nothing has moved.
-    await expect(page.locator("#preview-amounts-work .working")).toBeHidden(live);
+    await territoriesDone(page, "#preview");
+    await amountsDone(page, "#preview", true);
     expect(await snap(page, parts), `${label}: found`).toEqual(at);
     // Five times off and on with the amounts already counted.
     for (let i = 0; i < 5; i++) {
       await page.locator("#preview-amounts").setChecked(i % 2 === 1);
+      await amountsDone(page, "#preview", i % 2 === 1);
       expect(await snap(page, parts), `${label}: toggle ${i}`).toEqual(at);
     }
   });
@@ -212,7 +236,7 @@ test("#975: in the large view of Vulcanus, ticking either box never moves the ot
     await expect(page.locator("#large-amounts-work .working")).toBeVisible();
     expect(await snap(page, parts), `${label}: counting`).toEqual(at);
     await amounts.release();
-    await expect(page.locator("#large-amounts-work .working")).toBeHidden(live);
+    await amountsDone(page, "#large-view", true);
     expect(await snap(page, parts), `${label}: counted`).toEqual(at);
     const terr = hold(page, "/generate/preview/territories");
     await terr.start();
@@ -220,11 +244,14 @@ test("#975: in the large view of Vulcanus, ticking either box never moves the ot
     await expect(page.locator("#large-territories-work .working")).toBeVisible();
     expect(await snap(page, parts), `${label}: finding`).toEqual(at);
     await terr.release();
-    await expect(page.locator("#large-territories-work .working")).toBeHidden(live);
-    await expect(page.locator("#large-amounts-work .working")).toBeHidden(live);
+    await territoriesDone(page, "#large-view");
+    await amountsDone(page, "#large-view", true);
     expect(await snap(page, parts), `${label}: found`).toEqual(at);
+    // The large view passes axe too.
+    await checkPage(page);
     for (let i = 0; i < 5; i++) {
       await page.locator("#large-amounts").setChecked(i % 2 === 1);
+      await amountsDone(page, "#large-view", i % 2 === 1);
       expect(await snap(page, parts), `${label}: toggle ${i}`).toEqual(at);
     }
     await page.keyboard.press("Escape");
@@ -263,14 +290,19 @@ test("#974: on the star map Previous sits at the frame's start edge, the mirror 
   await page.setViewportSize({ width: 1920, height: 1080 });
   await expect(section(page).getByRole("img")).toHaveCount(1, { timeout: 60_000 });
   await openLarge(page);
+  // A planet has its settings column beside the frame; the star map has none, so the frame widens.
+  await expect(page.locator("#large-settings")).toBeVisible();
+  const planetNext = await box(page, "#large-next");
   await page.locator("#large-starmap").click();
   await expect(page.locator("#large-view")).toHaveAttribute("data-starmap", "");
   const frame = await box(page, ".large-view__stage");
   const prev = await box(page, "#large-prev");
   const next = await box(page, "#large-next");
-  // Within the frame's start padding, no further in than Next is from the end.
+  // Next keeps its place, so clicks in one spot keep stepping.
+  expect(next).toEqual(planetNext);
+  // Mirror images: the same gap to each edge, within 1 px, on one line.
   expect(prev.x).toBeGreaterThanOrEqual(frame.x);
-  expect(prev.x - frame.x).toBeLessThanOrEqual(frame.x + frame.width - (next.x + next.width));
+  expect(Math.abs((prev.x - frame.x) - (frame.x + frame.width - (next.x + next.width)))).toBeLessThanOrEqual(1);
   expect(prev.y).toBe(next.y);
 });
 
@@ -318,6 +350,22 @@ test("#966: every star map label fits inside its picture, on the page and in the
       }).map((t) => t.textContent);
     });
     expect(await inside("#preview .starmap-card svg"), `${label}: page`).toEqual([]);
+    // Fitting again changes nothing: each fit starts from the server's view box. Wider labels, as
+    // a wider font draws them, make the first refit grow the box; the second keeps it.
+    const svg = page.locator("#preview .starmap-card svg").first();
+    const viewBox = () => svg.getAttribute("viewBox");
+    const refit = () => page.evaluate(() => document.body.dispatchEvent(new Event("htmx:afterSettle")));
+    const server = await viewBox();
+    await svg.evaluate((s) => { (s as SVGSVGElement).style.letterSpacing = "0.4em"; });
+    await refit();
+    const grown = await viewBox();
+    expect(grown, `${label}: wider labels grow the box`).not.toBe(server);
+    await refit();
+    expect(await viewBox(), `${label}: refitted`).toBe(grown);
+    expect(await inside("#preview .starmap-card svg"), `${label}: wider labels`).toEqual([]);
+    await svg.evaluate((s) => { (s as SVGSVGElement).style.letterSpacing = ""; });
+    await refit();
+    expect(await inside("#preview .starmap-card svg"), `${label}: labels again`).toEqual([]);
     await section(page).locator(".starmap-card a.picture").click();
     await expect(page.locator("#large-view")).toHaveAttribute("data-starmap", "");
     await expect(page.locator("#large-frame svg.starmap")).toBeVisible();
@@ -371,4 +419,97 @@ test("#987: every step ends in the one form foot, and step 4 never scrolls sidew
       expect(await snap(page, head), `${label}: header after a slider`).toEqual(before);
     }
   }, [{ width: 1920, height: 1080 }, { width: 375, height: 812 }]);
+});
+
+// A new seed typed in without scrolling to its field, so only the redraw it starts may move anything.
+const typeSeed = (page: Page, seed: string) => page.locator("#generate-seed").evaluate((f, v) => {
+  (f as HTMLInputElement).value = v;
+  f.dispatchEvent(new Event("input", { bubbles: true }));
+  f.dispatchEvent(new Event("change", { bubbles: true }));
+}, seed);
+
+test("#975: Preview map redraws without moving its button, the preview's size field or the page", async ({ page }) => {
+  const id = await openNewMap(page);
+  await each(page, async (label) => {
+    await page.goto(newMapPath(id));
+    await expect(section(page).getByRole("img")).toHaveCount(1, { timeout: 60_000 });
+    await expect(page.locator("#preview-amounts")).toBeVisible();
+    // In the window's middle, clear of the bars at its foot, so the click itself scrolls nothing.
+    await page.locator("#preview-button").evaluate((b) => b.scrollIntoView({ block: "center" }));
+    const parts = ["#preview-button", "#newmap-save", "#preview-size-field", "#preview-status", "label:has(> #preview-amounts)"];
+    const at = await snap(page, parts);
+    const draw = hold(page, "/generate/preview");
+    await draw.start();
+    // A pointer's click where the button is: Playwright's own click scrolls it clear of the foot bar's room first.
+    const button = at["#preview-button"] as Box;
+    await page.mouse.click(button.x + button.width / 2, button.y + button.height / 2);
+    await expect.poll(draw.waiting).toBeGreaterThan(0);
+    await expect(page.locator("#preview-status .working")).toBeVisible();
+    expect(await snap(page, parts), `${label}: drawing`).toEqual(at);
+    await draw.release();
+    await expect(page.locator("#preview-status .working")).toBeHidden(live);
+    await expect(page.locator("#preview")).not.toHaveAttribute("aria-busy", "true");
+    await expect.poll(() => section(page).locator("a.picture .map img").first().evaluate((i) => (i as HTMLImageElement).naturalWidth)).toBeGreaterThan(0);
+    // Preview map chooses All planets, which has no amounts box (DESIGN 8.8); what sits above it stays.
+    const drawn = parts.filter((p) => !p.includes("#preview-amounts"));
+    expect(await snap(page, drawn), `${label}: drawn`).toEqual(Object.fromEntries(Object.entries(at).filter(([k]) => !k.includes("#preview-amounts"))));
+  });
+});
+
+test("#975: Show resource amounts moves neither Draw from a real game nor the picture's Download link", async ({ page }) => {
+  const id = await openNewMap(page);
+  await each(page, async (label) => {
+    await page.goto(newMapPath(id));
+    await expect(section(page).getByRole("img")).toHaveCount(1, { timeout: 60_000 });
+    const draw = page.locator("#preview-chart-button");
+    await expect(draw).toBeVisible();
+    await draw.scrollIntoViewIfNeeded();
+    const link = "#preview .picture-actions > a.download";
+    // The link's words grow with the amounts, so its start stays and its width may not.
+    const read = async () => {
+      const out = await snap(page, ["#preview-chart-button", "#preview-amounts", link]);
+      out[link] = { ...(out[link] as Box), width: 0 };
+      return out;
+    };
+    const at = await read();
+    for (const on of [true, false, true, false]) {
+      // Ticked where it is, without scrolling it into view: only the change itself may move anything.
+      await page.locator("#preview-amounts").evaluate((b) => (b as HTMLInputElement).click());
+      await expect(page.locator("#preview-amounts")).toBeChecked({ checked: on });
+      await amountsDone(page, "#preview", on);
+      expect(await read(), `${label}: amounts ${on ? "on" : "off"}`).toEqual(at);
+    }
+  });
+});
+
+test("#975: under the preview the redraw's words wrap whole at 320 px, and showing them moves nothing", async ({ page }) => {
+  const id = await openNewMap(page);
+  await page.setViewportSize({ width: 320, height: 640 });
+  await page.goto(newMapPath(id));
+  await expect(section(page).getByRole("img")).toHaveCount(1, { timeout: 60_000 });
+  const text = page.locator("#preview-status .working__text");
+  await page.locator("#preview-status").scrollIntoViewIfNeeded();
+  const parts = ["#preview-status", "#preview-size-field"];
+  const at = await snap(page, parts);
+  const draw = hold(page, "/generate/preview");
+  await draw.start();
+  await typeSeed(page, "4242");
+  await expect(page.locator("#preview-status .working")).toBeVisible();
+  // Whole: nothing is cut off with an ellipsis.
+  expect(await text.evaluate((t) => t.scrollWidth <= t.clientWidth && getComputedStyle(t).textOverflow !== "ellipsis")).toBe(true);
+  await expect(text).toHaveText("Drawing the map preview for the current settings…");
+  expect(await snap(page, parts), "drawing").toEqual(at);
+  await draw.release();
+  await expect(page.locator("#preview-status .working")).toBeHidden(live);
+  // At 200% text it wraps rather than cuts, and still moves nothing as it shows.
+  await page.evaluate(() => { document.documentElement.style.fontSize = "200%"; });
+  await page.locator("#preview-status").scrollIntoViewIfNeeded();
+  const big = await snap(page, parts);
+  const again = hold(page, "/generate/preview");
+  await again.start();
+  await typeSeed(page, "4343");
+  await expect(page.locator("#preview-status .working")).toBeVisible();
+  expect(await text.evaluate((t) => t.scrollWidth <= t.clientWidth)).toBe(true);
+  expect(await snap(page, parts), "drawing at 200%").toEqual(big);
+  await again.release();
 });

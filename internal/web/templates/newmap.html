@@ -96,11 +96,6 @@
     <div class="gen-main" id="line-box">
       <div id="map-key-box">
         <input type="hidden" name="map_key" value="{{.MapKey}}">
-        {{- if .Reset}}
-        <div class="message message--note" id="map-reset" tabindex="-1">
-          <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.reset_note"}}</p>
-        </div>
-        {{- end}}
       </div>
       {{template "newmap-settings" .}}
     </div>
@@ -111,7 +106,6 @@
   </div>
   <div class="gen-preview">
     {{template "generate-preview" .}}
-    <div id="preview-wait" class="wait" role="status">{{template "working" (t "worlds.generate.preview.wait")}}</div>
     <template id="preview-failed">
       <section aria-labelledby="preview-failed-heading">
         <h2 id="preview-failed-heading">{{t "worlds.generate.preview.heading"}}</h2>
@@ -121,8 +115,9 @@
       </section>
     </template>
     {{- if .CanPreview}}
-    {{- /* While a redraw runs: the working bar and its words, on one line held whether or not it runs (DESIGN 8.8). */}}
-    <div class="work-slot preview-status" id="preview-status" data-idle data-text="{{t "worlds.generate.preview.updating"}}">{{template "working" (t "worlds.generate.preview.updating")}}</div>
+    {{- /* While a redraw runs, Preview map's too: the working bar and its words, in a spot held whether
+         or not it runs, so starting one moves nothing (DESIGN 8.8). data-wait is what Preview map says as it starts. */}}
+    <div class="work-slot preview-status" id="preview-status" data-idle data-text="{{t "worlds.generate.preview.updating"}}" data-wait="{{t "worlds.generate.preview.wait"}}">{{template "working" (t "worlds.generate.preview.updating")}}</div>
     {{- with .Form}}
     <div class="field step" id="preview-size-field">
       <label for="generate-preview-size" id="generate-preview-size-label">{{t "worlds.generate.preview.size_label"}}</label>
@@ -158,7 +153,7 @@
     {{template "genflow-back" .Back}}
     {{- if .CanPreview}}
     <button type="submit" class="button" id="preview-button" formaction="{{.PreviewPath}}"
-      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-wait">{{t "worlds.generate.preview.button"}}</button>
+      hx-post="{{.PreviewPath}}" hx-target="#preview" hx-select="#preview" hx-swap="outerHTML" hx-select-oob="#generate-seed,#filled-seed" hx-indicator="#preview-status">{{t "worlds.generate.preview.button"}}</button>
     {{- end}}
     <button type="submit" class="button button--primary" id="newmap-save"{{if not .SaveError.IsZero}} aria-describedby="newmap-save-error"{{end}}>{{t "newmap.finish"}}</button>
   </div>
@@ -181,11 +176,6 @@
 {{define "newmap-settings" -}}
 <div class="mode-panel mode-panel--settings">
 <div id="preset-box" class="mode-panel">
-  {{- if .Refilled}}
-  <div class="message message--note" id="map-refilled" tabindex="-1" autofocus>
-    <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.generate.refilled" "preset" (.PresetMsg .Preset)}}</p>
-  </div>
-  {{- end}}
   <div class="field">
     <label for="generate-preset">{{t "worlds.generate.preset.label"}}</label>
     <div class="inline-row preset-row">
