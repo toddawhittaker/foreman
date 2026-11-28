@@ -263,7 +263,8 @@ func (g *gameRuns) dismiss(id string, at int64) {
 
 // toastMark says when a result toast was first shown and by which page,
 // both as counts of toastSeq: a page load takes a new count, which names the
-// page, and each mark takes one too (DESIGN 6, "Toasts").
+// page and dates its marks, and each mark a stream makes takes one too
+// (DESIGN 6, "Toasts").
 type toastMark struct{ At, Page uint64 }
 
 // byPage reports whether a page load made the mark: a stream's mark takes a
@@ -281,22 +282,31 @@ func shownByPage(marks map[string]toastMark) map[string]toastMark {
 	return out
 }
 
-// pageToasts notes that a page load showed the world's result toasts with
-// these keys, so a later load leaves them out. The results stay, with their
-// Undo and Switch back offers; the next action forgets the marks with them.
-// It returns the load's count, which names the page to its stream.
-// A key only a stream had sent is marked again as this load's.
-func (g *gameRuns) pageToasts(id string, keys []string) uint64 {
+// loadToasts names a page load before it reads the world's results and
+// marks: a mark made after this count, even one made while the load is
+// drawn, is one the load may not have seen, so its stream sends it
+// (liveStream.newToasts; DESIGN 6, "Toasts").
+func (g *gameRuns) loadToasts() uint64 {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.toastSeq++
+	return g.toastSeq
+}
+
+// pageToasts notes that the page load named page (loadToasts) showed the
+// world's result toasts with these keys, so a later load leaves them out.
+// The results stay, with their Undo and Switch back offers; the next action
+// forgets the marks with them. A key only a stream had sent is marked again
+// as this load's.
+func (g *gameRuns) pageToasts(id string, page uint64, keys []string) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
 	for _, k := range keys {
 		if m, ok := g.toasted[id][k]; ok && !m.byPage() {
 			delete(g.toasted[id], k)
 		}
 	}
-	g.markLocked(id, keys, g.toastSeq)
-	return g.toastSeq
+	g.markLocked(id, keys, page, page)
 }
 
 // streamToasts notes that the stream of the page named page sent the
@@ -305,16 +315,16 @@ func (g *gameRuns) streamToasts(id string, keys []string, page uint64) {
 	g.mu.Lock()
 	defer g.mu.Unlock()
 	g.toastSeq++
-	g.markLocked(id, keys, page)
+	g.markLocked(id, keys, g.toastSeq, page)
 }
 
-func (g *gameRuns) markLocked(id string, keys []string, page uint64) {
+func (g *gameRuns) markLocked(id string, keys []string, at, page uint64) {
 	if g.toasted[id] == nil {
 		g.toasted[id] = map[string]toastMark{}
 	}
 	for _, k := range keys {
 		if _, ok := g.toasted[id][k]; !ok {
-			g.toasted[id][k] = toastMark{At: g.toastSeq, Page: page}
+			g.toasted[id][k] = toastMark{At: at, Page: page}
 		}
 	}
 }
@@ -479,6 +489,9 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 		s.page(w, r, http.StatusOK, u.Username, ServerPage{})
 		return
 	}
+	// The load is named before it reads anything, so a toast marked while it
+	// is drawn still comes by its stream (DESIGN 6, "Toasts").
+	seq := s.runs.loadToasts()
 	p := s.serverPage(r.Context(), sum, s.game.Status(sum.ID))
 	p.Admin = isAdmin(u)
 	p.PlayerResult = s.playerResults.take(u.ID, sum.ID, PathServer)
@@ -491,7 +504,8 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	}
 	// A result's toast shows once: the next load leaves it out, while its
 	// Undo row stays (DESIGN 6, "Toasts").
-	p.ToastSeq = s.runs.pageToasts(sum.ID, toastKeys(p.ResultToasts()))
+	p.ToastSeq = seq
+	s.runs.pageToasts(sum.ID, seq, toastKeys(p.ResultToasts()))
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
