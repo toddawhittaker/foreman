@@ -415,7 +415,6 @@
   "worlds.generate.preview.size_hint": "La part de la carte, autour de son centre, que montre l’aperçu. L’épingle marque le point de départ des joueurs.",
   "worlds.generate.error.preview_size": "Choisissez l’une des tailles de la liste.",
   "worlds.generate.territories.label": "Afficher les territoires des démolisseurs",
-  "worlds.generate.territories.hint": "Les trouver prend quelques secondes de plus.",
   "worlds.generate.territories.finding": "Recherche des territoires des démolisseurs…",
   "worlds.generate.territories.counts": "Territoires de démolisseurs dans cette image : {list}.",
   "worlds.generate.territories.none": "Cette image ne contient aucun territoire de démolisseur.",

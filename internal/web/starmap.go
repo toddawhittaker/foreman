@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 
 	"golang.org/x/text/width"
 
@@ -51,9 +52,15 @@ const (
 	starMapFont    = 0.73
 	starMapFontMin = starMapSide / 80
 	starMapFontMax = starMapSide / 30
-	// A label's guessed size, in fonts: a letter about 0.6 of it, a line 1.2.
+	// A label's guessed size, in fonts: a letter at most 0.6 of it, a
+	// capital 0.75, a W or M a whole font, a wide (CJK) character 1.2, as
+	// the widest common sans fonts draw them, so the reader's font never
+	// draws a label wider than its guess; a line is 1.2.
 	// starMapLabelGap is the space between a circle and its label (5 px).
 	starMapCharWidth  = 0.6
+	starMapCapWidth   = 0.75
+	starMapWideLetter = 1.0
+	starMapCJKWidth   = 1.2
 	starMapLineHeight = 1.2
 	starMapLabelGap   = 0.4
 	// starMapArcStep is the largest turn, in radians, from one piece of a
@@ -116,9 +123,9 @@ type StarMapStar struct{ X, Y float64 }
 type StarMapLocation struct {
 	Name  string
 	Label MapGenName
-	// LabelCells is the label's width as the page shows it, in character
-	// cells: a wide (CJK) character counts two.
-	LabelCells int
+	// LabelWidth is the label's guessed width as the page shows it, in
+	// fonts (labelWidth).
+	LabelWidth float64
 	X, Y, R    float64
 	// Icon is the picture drawn over the circle, or empty for none, in the
 	// circle's square: IconX and IconY its corner, IconSize its side.
@@ -355,7 +362,7 @@ func layoutStarMap(m mapgen.StarMap, cat mapgen.Catalogue, loc i18n.Locale, ic s
 	for i, l := range m.Locations {
 		label := starMapLabel(cat, l)
 		c := placeLocation(l, scale, font, label, ic.icon(l))
-		c.LabelCells = labelCells(loc.Format(label.Name))
+		c.LabelWidth = labelWidth(loc.Format(label.Name))
 		// The label takes the spot of least cost among every direction and
 		// distance tried (DESIGN 8.23).
 		var best labelCost
@@ -403,7 +410,7 @@ type rect struct{ min, max point }
 // labelBox is the box a location's label covers. Its width is guessed from
 // the name the page shows, as the font is the reader's.
 func labelBox(l StarMapLocation) rect {
-	w, h := starMapCharWidth*l.font*float64(l.LabelCells), starMapLineHeight*l.font
+	w, h := l.LabelWidth*l.font, starMapLineHeight*l.font
 	x0, y0 := l.LabelX-w/2, l.LabelY-h/2
 	switch l.Anchor {
 	case "start":
@@ -554,16 +561,21 @@ func segmentInRect(a, b point, r rect) bool {
 	return true
 }
 
-// labelCells is the width of text in character cells: a wide or fullwidth
-// (CJK) character is two, any other one.
-func labelCells(text string) int {
-	n := 0
+// labelWidth is the guessed width of text in fonts, at least as wide as
+// the widest common sans fonts draw it (DESIGN 8.23): a wide or fullwidth (CJK)
+// character, a W or M, a capital, then any other character.
+func labelWidth(text string) float64 {
+	n := 0.0
 	for _, r := range text {
-		switch width.LookupRune(r).Kind() {
-		case width.EastAsianWide, width.EastAsianFullwidth:
-			n += 2
+		switch k := width.LookupRune(r).Kind(); {
+		case k == width.EastAsianWide || k == width.EastAsianFullwidth:
+			n += starMapCJKWidth
+		case strings.ContainsRune("WMmw", r):
+			n += starMapWideLetter
+		case unicode.IsUpper(r):
+			n += starMapCapWidth
 		default:
-			n++
+			n += starMapCharWidth
 		}
 	}
 	return n

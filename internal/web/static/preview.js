@@ -76,42 +76,9 @@ startPreviewWithForm(() => {
       });
       img.setAttribute("href", url);
     });
-    const maps = root.matches && root.matches("svg.starmap") ? [root] : root.querySelectorAll("svg.starmap");
-    maps.forEach(fitStarMap);
-  }
-  // The server guesses each label's width from its letters; the reader's font
-  // may be wider, so the view box grows, square about its middle, to what the
-  // page draws, and no label is cut at the frame's edge (#966). A map out of
-  // sight, in a template, has no size yet and is fitted once shown.
-  function fitStarMap(svg) {
-    const vb = svg.viewBox && svg.viewBox.baseVal;
-    if (!vb || !vb.width) return;
-    // Only the labels' boxes: the rest is drawn where the server measured it.
-    const boxes = [];
-    for (const t of svg.querySelectorAll("text")) {
-      try {
-        const b = t.getBBox();
-        if (b.width && b.height) boxes.push(b);
-      } catch {
-        return;
-      }
-    }
-    if (!boxes.length) return;
-    const pad = vb.width / 100;
-    const x0 = Math.min(vb.x, ...boxes.map((b) => b.x - pad));
-    const y0 = Math.min(vb.y, ...boxes.map((b) => b.y - pad));
-    const x1 = Math.max(vb.x + vb.width, ...boxes.map((b) => b.x + b.width + pad));
-    const y1 = Math.max(vb.y + vb.height, ...boxes.map((b) => b.y + b.height + pad));
-    if (x0 >= vb.x && y0 >= vb.y && x1 <= vb.x + vb.width && y1 <= vb.y + vb.height) return;
-    const side = Math.max(x1 - x0, y1 - y0);
-    const cx = (x0 + x1) / 2;
-    const cy = (y0 + y1) / 2;
-    svg.setAttribute("viewBox", `${cx - side / 2} ${cy - side / 2} ${side} ${side}`);
   }
   loadPictures(document);
   document.body.addEventListener("htmx:afterSettle", () => loadPictures(document));
-  // A label's width is known only once its font has loaded.
-  if (document.fonts) document.fonts.ready.then(() => loadPictures(document));
 
   // Only the newest words are said: a later announcement or status text
   // cancels one still waiting, so older news never overwrites newer.
@@ -143,7 +110,7 @@ startPreviewWithForm(() => {
     owed = "";
   }
 
-  // A working bar's spot under its box or on its held line: idle, it keeps its room unseen (#975).
+  // A working bar's spot under its box or on its held line: idle, it keeps its room unseen (DESIGN 8.8).
   function working(id, on) {
     const spot = document.getElementById(id);
     if (spot) spot.toggleAttribute("data-idle", !on);
@@ -248,7 +215,8 @@ startPreviewWithForm(() => {
     const terr = q.has("territories");
     const amt = q.has("amounts");
     const text = terr && amt ? a.dataset.both : terr ? a.dataset.territories : amt ? a.dataset.amounts : a.dataset.plain;
-    if (text) a.textContent = text;
+    // A link that holds its box for its longest words keeps them in their own span.
+    if (text) (a.querySelector("[data-label]") || a).textContent = text;
   }
   function askFor(href, name, on) {
     const url = new URL(href, location.href);
@@ -328,6 +296,8 @@ startPreviewWithForm(() => {
     slot.replaceChildren();
     terrWorking(true);
     largeRetry();
+    // The bar is hidden from screen readers, so the start is said.
+    if (say) announce(slot.dataset.finding);
     const body = new URLSearchParams(new FormData(formEl()));
     let html;
     try {
@@ -662,27 +632,36 @@ startPreviewWithForm(() => {
     return node.matches("a.picture") ? "#preview " + planet : `#preview li:has(${planet}) a.download`;
   }
 
-  // Preview size sits above the picture when one is drawn, in the section's slot, and
-  // otherwise after the section, where the page puts it (DESIGN 8.6). It is one field
-  // moved, never redrawn, so a drag and its value survive each reply.
+  // Preview size and the redraw's line sit above the boxes and the picture when one is
+  // drawn, each in its slot in the section, and otherwise after the section, where the page
+  // puts them (DESIGN 8.6, 8.8). Each is one node moved, never redrawn, so a drag and its
+  // value survive each reply, and a redraw's line is where it was when the reply lands.
+  const inSlots = [["preview-size-field", "preview-size-slot"], ["preview-status", "preview-status-slot"]];
+  // Each goes in right after the section, so the last one placed comes first: the page's order, the line then the field.
   function placeSize(section) {
-    const field = document.getElementById("preview-size-field");
-    if (!field || !section) return;
-    const slot = section.querySelector("#preview-size-slot");
-    const parent = slot || section.parentNode;
-    const before = slot ? null : section.nextSibling;
-    if (field.parentNode === parent && (slot || field.previousSibling === section)) return;
-    const had = field.contains(document.activeElement) ? document.activeElement : null;
-    if (parent.moveBefore) parent.moveBefore(field, before);
-    else parent.insertBefore(field, before);
-    if (had && document.activeElement !== had) had.focus({ preventScroll: true });
+    if (!section) return;
+    for (const [id, slotId] of inSlots) {
+      const field = document.getElementById(id);
+      if (!field) continue;
+      const slot = section.querySelector("#" + slotId);
+      const parent = slot || section.parentNode;
+      const before = slot ? null : section.nextSibling;
+      if (field.parentNode === parent && (slot || field.previousSibling === section)) continue;
+      const had = field.contains(document.activeElement) ? document.activeElement : null;
+      if (parent.moveBefore) parent.moveBefore(field, before);
+      else parent.insertBefore(field, before);
+      if (had && document.activeElement !== had) had.focus({ preventScroll: true });
+    }
   }
   placeSize(document.getElementById("preview"));
-  // Preview map's own htmx swap replaces the section whole, so the field steps out first and back after.
+  // Preview map's own htmx swap replaces the section whole, so they step out first and back after.
   document.addEventListener("htmx:beforeSwap", (e) => {
-    const field = document.getElementById("preview-size-field");
     const section = document.getElementById("preview");
-    if (field && section && e.detail.target === section && section.contains(field)) section.after(field);
+    if (!section || e.detail.target !== section) return;
+    for (const [id] of inSlots) {
+      const field = document.getElementById(id);
+      if (field && section.contains(field)) section.after(field);
+    }
   });
   document.addEventListener("htmx:afterSettle", () => placeSize(document.getElementById("preview")));
 

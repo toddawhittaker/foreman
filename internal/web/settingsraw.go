@@ -2,6 +2,7 @@ package web
 
 import (
 	"net/http"
+	"reflect"
 	"strconv"
 	"strings"
 	"unicode/utf8"
@@ -38,12 +39,13 @@ func (SettingsRawPage) templateName() string { return "settingsraw" }
 
 // toasts: a save the world no longer takes is summed up over the editor,
 // which keeps its text (DESIGN 6, "Toasts"); the errors in the text stay at
-// the field.
+// the field. A read-only refusal is already told by the page's read-only
+// note, so it makes no toast.
 func (p SettingsRawPage) toasts() []Toast {
-	if p.Error.IsZero() {
+	if reflect.DeepEqual(p.Error, p.ReadOnly) {
 		return nil
 	}
-	return []Toast{{Error: true, Text: p.Error}}
+	return errorToast(p.Error)
 }
 func (SettingsRawPage) navItem() string { return PathWorlds }
 

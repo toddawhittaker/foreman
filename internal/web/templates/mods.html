@@ -2,8 +2,9 @@
 {{define "scripts"}}<script src="{{static "live.js"}}" defer></script><script src="{{static "modsearch.js"}}" defer></script><script src="{{static "dropzone.js"}}" defer></script>{{end}}
 
 {{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "mods.tab"))}}{{end}}{{end}}
-{{define "head-title"}}{{with .Page}}{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}
-{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{if .Page.InFlow}}{{template "genflow-steps" .Page.Steps}}{{end}}{{end}}
+{{- /* In the guided Generate, step 2's header is the other steps': the step's name and the step bar, no world tabs (DESIGN 8.6). */}}
+{{define "head-title"}}{{with .Page}}{{if .InFlow}}{{t "newmap.steps.mods"}}{{else}}{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{if .Page.InFlow}}{{template "genflow-steps" .Page.Steps}}{{else}}{{template "world-tabs" .Page.Tabs}}{{end}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" .}}

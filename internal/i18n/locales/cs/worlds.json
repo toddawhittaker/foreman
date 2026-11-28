@@ -427,7 +427,6 @@
   "worlds.generate.preview.size_hint": "Kolik mapy kolem jejího středu náhled ukazuje. Špendlík ukazuje, kde hráči začínají.",
   "worlds.generate.error.preview_size": "Je třeba vybrat jednu z velikostí v seznamu.",
   "worlds.generate.territories.label": "Zobrazit teritoria ničitelů",
-  "worlds.generate.territories.hint": "Jejich nalezení trvá o několik sekund déle.",
   "worlds.generate.territories.finding": "Hledají se teritoria ničitelů…",
   "worlds.generate.territories.counts": "Teritoria ničitelů v tomto obrázku: {list}.",
   "worlds.generate.territories.none": "Tento obrázek neobsahuje žádná teritoria ničitelů.",

@@ -427,7 +427,6 @@
   "worlds.generate.preview.size_hint": "Jaka część mapy wokół jej środka jest widoczna w podglądzie. Znacznik pokazuje, gdzie zaczynają gracze.",
   "worlds.generate.error.preview_size": "Należy wybrać jeden z rozmiarów z listy.",
   "worlds.generate.territories.label": "Pokaż terytoria dewastatorów",
-  "worlds.generate.territories.hint": "Ich wyszukanie trwa kilka sekund dłużej.",
   "worlds.generate.territories.finding": "Wyszukiwanie terytoriów dewastatorów…",
   "worlds.generate.territories.counts": "Terytoria dewastatorów na tym obrazie: {list}.",
   "worlds.generate.territories.none": "Ten obraz nie zawiera terytoriów dewastatorów.",

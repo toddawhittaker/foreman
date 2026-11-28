@@ -626,8 +626,11 @@ test.describe("on the One planet picture", () => {
   test("the picture does not move as the count comes and goes", { tag: "@looks" }, async ({ page }) => {
     await onePlanet(page);
     const img = section(page).getByRole("img");
-    // In page coordinates, as ticking the box scrolls it into view.
-    const top = () => img.evaluate((i) => i.getBoundingClientRect().top + window.scrollY);
+    // In the preview pane's coordinates, as ticking the box scrolls it into view and the pane may stick to the window.
+    const top = () => img.evaluate((i) => {
+      const pane = i.closest(".gen-preview")!;
+      return i.getBoundingClientRect().top - pane.getBoundingClientRect().top + pane.scrollTop;
+    });
     const before = await top();
     const hold = holdCounts(page);
     await hold.start();

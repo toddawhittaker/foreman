@@ -12,11 +12,13 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
+	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/toddawhittaker/foreman/internal/game"
+	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/territory"
 )
 
@@ -409,5 +411,17 @@ func TestTerritoryDownloadDrawsWithTheRequestContextAndRefusesWhenBusy(t *testin
 	}
 	if rec := hn.getLong(vulcanus+"/download?territories=1", c); rec.Code != http.StatusInternalServerError {
 		t.Errorf("another failure: %d", rec.Code)
+	}
+}
+
+// The territories hint is gone everywhere, /design and the catalogue too (#975).
+func TestTerritoriesHintIsGone(t *testing.T) {
+	if slices.Contains(i18n.EnglishKeys(), "worlds.generate.territories.hint") {
+		t.Error("the catalogue still has worlds.generate.territories.hint")
+	}
+	hn := newHarness(t, nil)
+	c := hn.signIn()
+	if body := hn.get(PathDesign, withCookie(c)).Body.String(); strings.Contains(body, "Finding them takes a few seconds more.") {
+		t.Error("/design still shows the territories hint")
 	}
 }

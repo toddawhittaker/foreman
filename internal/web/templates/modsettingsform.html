@@ -27,11 +27,6 @@
   <p><strong>{{t "common.label.warning"}}</strong> {{t "mods.settings.edit.changed"}}</p>
 </div>
 {{- end}}
-{{- if .NoChange}}
-<div class="message message--note" id="mod-settings-nochange" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.note"}}</strong> {{t "mods.settings.edit.no_change"}}</p>
-</div>
-{{- end}}
 {{- if not .Busy.IsZero}}
 <div class="message message--note" id="mod-settings-busy" tabindex="-1" autofocus>
   <p><strong>{{t "common.label.note"}}</strong> {{msg .Busy}}</p>

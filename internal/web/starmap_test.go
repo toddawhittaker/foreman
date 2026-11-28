@@ -135,7 +135,7 @@ func TestStarMapScaleFitsTheFurthest(t *testing.T) {
 				t.Errorf("far %v: %s at %v,%v r %v is outside %q", far, l.Name, l.X, l.Y, l.R, v.ViewBox)
 			}
 			// The label's far end, at the guessed width, is inside too.
-			if end := l.LabelX + starMapCharWidth*v.Font*float64(l.LabelCells); l.Anchor == "start" && end > x+w {
+			if end := l.LabelX + v.Font*l.LabelWidth; l.Anchor == "start" && end > x+w {
 				t.Errorf("far %v: %s's label ends at %v, outside %q", far, l.Name, end, v.ViewBox)
 			}
 		}
@@ -626,20 +626,21 @@ func TestStarMapFitsTheTranslatedLabel(t *testing.T) {
 		x, _, w, _ := viewBoxOf(t, v)
 		edge := v.Locations[1]
 		shown := loc.Format(starMapLabel(mapgen.Builtin("2.1", true), mapgen.Location{Name: "solar-system-edge"}).Name)
-		if want := labelCells(shown); edge.LabelCells != want || want == 0 {
-			t.Fatalf("%s: %d cells for %q, want %d", loc, edge.LabelCells, shown, want)
+		if want := labelWidth(shown); edge.LabelWidth != want || want == 0 {
+			t.Fatalf("%s: %v fonts for %q, want %v", loc, edge.LabelWidth, shown, want)
 		}
-		if end := edge.LabelX + starMapCharWidth*v.Font*float64(edge.LabelCells); edge.Anchor != "start" || end > x+w {
+		if end := edge.LabelX + v.Font*edge.LabelWidth; edge.Anchor != "start" || end > x+w {
 			t.Errorf("%s: the label %q (%s) ends at %v, outside %q", loc, shown, edge.Anchor, end, v.ViewBox)
 		}
 	}
 }
 
-// SPEC 5.6: a wide (CJK) character is about two letters wide.
-func TestLabelCells(t *testing.T) {
-	for text, want := range map[string]int{"": 0, "Nauvis": 6, "太阳系": 6, "Nauvis 星": 9, "Край": 4} {
-		if got := labelCells(text); got != want {
-			t.Errorf("labelCells(%q) = %d, want %d", text, got, want)
+// SPEC 5.6: a wide (CJK) character is about two letters wide, a W or M a
+// whole font, a capital wider than a small letter.
+func TestLabelWidth(t *testing.T) {
+	for text, want := range map[string]float64{"": 0, "Nauvis": 0.75 + 5*0.6, "太阳系": 3.6, "Nauvis 星": 0.75 + 6*0.6 + 1.2, "Край": 0.75 + 3*0.6, "WMmw": 4} {
+		if got := labelWidth(text); math.Abs(got-want) > 1e-9 {
+			t.Errorf("labelWidth(%q) = %v, want %v", text, got, want)
 		}
 	}
 }
@@ -955,5 +956,28 @@ func TestStarMapDrawsRebuiltStar(t *testing.T) {
 	}
 	if got := routePoints(byName, stars, byName["nauvis"], byName["nix"]); len(got) != 2 {
 		t.Errorf("places of two stars are %d points, want straight", len(got))
+	}
+}
+
+// SPEC 5.6, DESIGN 8.23 (#966): a label of wide letters at the right edge is
+// inside the view box at its real width, about a font a letter, so the page,
+// the file and a page without script never cut it.
+func TestStarMapFitsAWideLabelAtTheEdge(t *testing.T) {
+	m := starMapOf(t, `{"locations":[
+	 {"name":"nauvis","distance":10,"orientation":0.75,"label_orientation":0.75},
+	 {"name":"wide","distance":50,"orientation":0.25,"label_orientation":0.25}
+	],"routes":[]}`)
+	cat := mapgen.Catalogue{Planets: []mapgen.Planet{{Name: "wide", Label: "WMWMWMWMWMWMWMWMWMWM"}}}
+	v, ok := layoutStarMap(m, cat, i18n.English, starMapIcons{})
+	if !ok {
+		t.Fatal("no star map")
+	}
+	x, _, w, _ := viewBoxOf(t, v)
+	edge := v.Locations[1]
+	if shown := i18n.English.Format(edge.Label.Name); !strings.Contains(shown, "WMWMWMWMWMWMWMWMWMWM") {
+		t.Fatalf("the label shows %q", shown)
+	}
+	if end := edge.LabelX + v.Font*20; edge.Anchor != "start" || end > x+w {
+		t.Errorf("the label (%s) ends at %v at a font a letter, outside %q", edge.Anchor, end, v.ViewBox)
 	}
 }

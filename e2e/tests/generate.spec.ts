@@ -177,7 +177,9 @@ test("a long world name fits at any width", { tag: "@looks" }, async ({ page, fo
   const name = "A very long world name ".repeat(3).trim().slice(0, 60);
   await page.getByLabel("World name").fill(name);
   await page.getByRole("button", { name: "Next: Mods" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText(name);
+  // Step 2's title is the step's name, as on the other steps; the world's name is in the crumb (DESIGN 8.6).
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("Mods");
+  await expect(page.locator(".pagehead__crumb")).toContainText(name);
   await checkPage(page);
 });
 
@@ -482,7 +484,7 @@ test.describe("the preview keeps focus and says what happened", () => {
     await expect(button).toHaveAttribute("aria-disabled", "true");
     await expect(button).not.toHaveAttribute("disabled", "");
     await expect(button).toBeFocused();
-    await expect(page.locator("#preview-wait")).toBeVisible();
+    await expect(page.locator("#preview-status .working")).toBeVisible();
 
     await expect(planetPictures(page)).toHaveCount(5);
     await expect(button).toBeFocused();
@@ -888,7 +890,7 @@ test.describe("without script", () => {
 
     await page.locator("#generate-preset").selectOption({ label: "Death world" });
     await page.getByRole("button", { name: "Finish" }).click();
-    await expect(page.locator("#map-refilled")).toContainText("The settings below were filled from the preset “Death world”.");
+    await expect(page.locator("#toasts .toast--error")).toContainText("The settings below were filled from the preset “Death world”.");
     await expect(page.locator("#mg-nauvis-enemy-base-size")).toHaveValue("200");
     await save(page);
     expect(worldJSON(foreman.dataDir, id).new_map.preset).toBe("death-world");

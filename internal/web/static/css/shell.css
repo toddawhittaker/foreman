@@ -841,8 +841,8 @@ main:has(> .gate) {
    the bar (WCAG 2.4.11): a 44 px button, its 12 px padding and the
    selection bar's 16 px lift. Where the bar's note and actions wrap at
    large text or a narrow window, its room grows with them, to half the
-   window, as Generate's does. */
-html:has(.generate > .gen-actions, .form-foot, .select-bar) {
+   window. */
+html:has(.form-foot, .select-bar) {
   --foot-bar-room: min(11rem, 50dvh);
 }
 
