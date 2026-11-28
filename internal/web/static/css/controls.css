@@ -475,9 +475,11 @@ tbody tr:has(> td > .check > input:checked) {
   pointer-events: none;
 }
 
-/* Focus: a dark gap, then the ring, so it reads on orange as on grey. */
+/* Focus: a gap in the colour behind the control, then the ring, so it reads
+   on orange as on grey. A plate sets --focus-gap to its own face, so the gap
+   never draws a band of the page inside a plate. */
 :focus-visible {
-  box-shadow: 0 0 0 2px var(--color-bg);
+  box-shadow: 0 0 0 2px var(--focus-gap, var(--color-bg));
 }
 
 .js-on .tablist > .tab {
