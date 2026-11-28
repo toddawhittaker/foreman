@@ -421,15 +421,21 @@ time[data-age-only] .time-short {
   }
 
   .snapshot-list:has(.row-actions) thead tr {
-    padding-block: 0 var(--space-2);
+    padding-block: 0;
   }
 
   .snapshot-list:has(.row-actions) tbody tr:last-child {
     border-block-end: 0;
   }
 
-  .snapshot-list:has(.row-actions) :is(th, td) {
+  /* A column head keeps the shared head's padding below it (tables.css). */
+  .snapshot-list:has(.row-actions) :is(th:not([scope="col"]), td) {
     padding: 0;
+    border: 0;
+  }
+
+  .snapshot-list:has(.row-actions) th[scope="col"] {
+    padding-inline: 0;
     border: 0;
   }
 
