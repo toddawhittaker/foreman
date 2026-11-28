@@ -37,10 +37,25 @@ async function box(page: Page, selector: string): Promise<Box> {
   return b!;
 }
 
-// The boxes of every selector, and the page's scroll, at one moment.
+// The boxes of every selector, and the page's scroll, at one moment, read
+// in one call to the page so a slow runner pays one round trip, not one per
+// selector.
 async function snap(page: Page, selectors: string[]) {
-  const out: Record<string, Box | number> = { scrollY: await page.evaluate(() => window.scrollY) };
-  for (const s of selectors) out[s] = await box(page, s);
+  const read = await page.evaluate((sels) => ({
+    scrollY: window.scrollY,
+    boxes: sels.map((s) => {
+      const el = document.querySelector(s);
+      // As Playwright's boundingBox: an element with no box (display: none) has none.
+      if (!el || el.getClientRects().length === 0) return null;
+      const r = el.getBoundingClientRect();
+      return { x: r.x, y: r.y, width: r.width, height: r.height };
+    }),
+  }), selectors);
+  const out: Record<string, Box | number> = { scrollY: read.scrollY };
+  selectors.forEach((s, i) => {
+    expect(read.boxes[i], s).not.toBeNull();
+    out[s] = read.boxes[i]!;
+  });
   return out;
 }
 
@@ -179,7 +194,8 @@ test("the map keeps its size as Show resource amounts is ticked and its list ope
   });
 });
 
-test("in the panel, each box has its working bar under it, and ticking one moves neither", async ({ page }) => {
+// One test per width, so each stays well inside the time limit on a slow runner.
+for (const size of widths) test(`in the panel, each box has its working bar under it, and ticking one moves neither, ${size.width} px`, async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await vulcanus(page, id);
@@ -223,10 +239,10 @@ test("in the panel, each box has its working bar under it, and ticking one moves
       await amountsDone(page, "#preview", i % 2 === 1);
       expect(await snap(page, parts), `${label}: toggle ${i}`).toEqual(at);
     }
-  });
+  }, [size]);
 });
 
-test("in the large view of Vulcanus, ticking either box never moves the other", async ({ page }) => {
+for (const size of widths) test(`in the large view of Vulcanus, ticking either box never moves the other, ${size.width} px`, async ({ page }) => {
   const id = await openNewMap(page);
   await each(page, async (label) => {
     await vulcanus(page, id);
@@ -264,7 +280,7 @@ test("in the large view of Vulcanus, ticking either box never moves the other", 
     await expect(page.locator("#large-view")).toBeHidden();
     // Leave both off for the next round.
     await page.locator("#preview-territories").uncheck();
-  });
+  }, [size]);
 });
 
 test("the large view's header keeps its parts in place from planet to planet", async ({ page }) => {

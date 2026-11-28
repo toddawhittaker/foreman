@@ -908,11 +908,22 @@ frame (7.4).
     them out of the address with `history.replaceState` once the toast is
     armed, keeping every other parameter and the hash. A reload or Back then
     shows no toast and announces nothing. What the result offers next in
-    the page, such as a link to the snapshot it named, goes with it.
+    the page, such as a link to the snapshot it named, goes with it, so a
+    reload after the drop loses that offer too. The Server page's results
+    come with no parameter: the server keeps a key for each result toast a
+    page has shown (`Toasted`), so a page drawn later, a live update or a
+    reconnect leaves it out, while its Undo row stays (SPEC 17.9). A toast from
+    a POST answer is not in the address and never comes back.
+  - **Errors stay.** An error toast has no timer: it stays until it is
+    closed, or until the page changes, so a failure is not missed.
   - **Words.** The text is printed with `msgHTML`, which escapes the
     sentence and every plain argument and adds only a fragment's own markup,
     so a time in it is a `<time>` element the page shows in the browser's
-    zone (SPEC 17.11).
+    local zone (SPEC 17.11), never UTC text.
+  - **No action slot.** A toast holds words and its close button only. A
+    result that offers a button (Undo, Next, Switch back) keeps that
+    button in the page, as the Server page's Undo row and the Mods tab's
+    Done box do (SPEC 17.9).
 
 - Viewport media queries are used for the shell (the bar's rows, the
   page's padding and width, plate padding, the tab icons) and where a
@@ -1104,8 +1115,10 @@ order and the picture agree.
 
 Only `opacity` and `transform` may animate, for at most 150 ms. Under
 `prefers-reduced-motion: reduce`, nothing animates: the working bar
-(7.6) stands still, and the "In progress" word carries the meaning.
-Nothing on these screens needs motion to be understood.
+(7.6) stands still and fills its track in a muted tone, and its words
+carry the meaning. A toast (6, "Toasts") appears and goes at once, with
+no slide or fade, at every setting. Nothing on these screens needs motion
+to be understood.
 
 ## 7. Components
 
@@ -1225,7 +1238,9 @@ the block padding is `--space-2` so a two-line label is not cramped.
   part on every page: as a plate's last part it runs to the plate's edges
   and takes its bottom corners; on its own it is a framed bar with
   `--radius-lg`, never wider than its column. The guided
-  Generate's footers lead with Back instead (8.6). A note about what is pending
+  Generate's footers lead with Back instead (8.6). The partial has no Back
+  slot, so steps 3 and 4 write the same `actions form-foot` bar out by
+  hand. A note about what is pending
   (unsaved changes, where a setting comes from) leads the bar at its start.
   A confirmation's row sits under a 1 px `line`. Cancel comes first in the
   markup too, so the screen order and the keyboard order agree.
@@ -1359,14 +1374,14 @@ bold word, so the kind never depends on colour.
   column it sits in, so its edges line up with the plate's other blocks;
   its words keep their reading measure. The edge is 4 px for every kind. A message has no
   shadow, so it never looks like a control. No close button: a message
-  stays until the page changes. The one
-  exception is the Server page's Done box after a success or a cancelled
-  stop (SPEC 17.9). It carries Undo or Switch back, which can stay on the
-  page for hours, so the person may close it once read. It has an icon-only
-  close button ("×", named "Close this message", a 44 px target) at the
-  box's top end corner, and the message's text keeps room for it (the button's width and a gap, on the end side), so no line runs under it. A failure's box never
-  has one: it stays until the next action, so a problem is not hidden by
-  accident.
+  stays until the page changes. A result's own words are a toast (6,
+  "Toasts"), which has its close button; a message in the page is for what
+  stays true, and for a result that carries a button (Undo, Next), which a
+  toast has no slot for. The Server page's Undo or Switch back after a
+  success or a cancelled stop is a row under its controls, not a message,
+  with an icon-only close button ("×", a 44 px target) that drops the offer
+  (SPEC 17.9). A failure's box has no close button: it stays until the next
+  action, so a problem is not hidden by accident.
 - `role="alert"` only on an error that appears after an action without a
   page load. A message that is part of a freshly loaded page has no role.
   Success messages from htmx go to `#announcer` instead (section 6), with
@@ -1395,8 +1410,7 @@ bold word, so the kind never depends on colour.
   state.
 - **A state plate** says once whether a feature is on or off, with its
   one control at the end (`state-plate`; MCP access on the API tokens
-  page, 8.21; the public mods page's state sentence, 8.20, is drawn the
-  same way). It is a box on `surface` with a 1 px `line` hairline and a
+  page, 8.21). It is a box on `surface` with a 1 px `line` hairline and a
   4 px start edge: `ok` when on; when off, a neutral plate with a
   `line-strong` edge, because a feature that is off is a resting state and
   not a problem. The heading carries its On or Off badge, then the state
@@ -1446,11 +1460,19 @@ The page's one `h1` is the question, first in `main` (after the
 breadcrumb on the mod plan and a favorite's delete step, 8.1), with no
 "Back to" link above it and no second heading inside the box. The box
 holds only "This will:", the list and the form. The world tabs (6,
-"Sub-navigation") and Cancel are the ways out.
+"Sub-navigation") and Cancel are the ways out. The `h1` is the page
+header's (6, "Shell") and has no id: nothing names the box by
+it. The mod plan is the one exception: its question changes as the plan
+does, so the words sit in `<span id="confirm-heading">` inside the `h1`,
+which a redraw swaps out of band.
 
 ```html
-<h1 id="confirm-heading">Delete the world "Family base 2025"?</h1>
-<nav class="subnav" aria-label="World pages">…</nav>
+<header class="pagehead">
+  <div class="pagehead__crumb">…</div>
+  <h1>Delete the world "Family base 2025"?</h1>
+  <div class="pagehead__actions"></div>
+  <nav class="subnav" aria-label="World pages">…</nav>
+</header>
 <section class="confirm">
   <p>This will:</p>
   <ul>
@@ -1915,7 +1937,9 @@ it a card or a plate alike; the class is `card` or `panel`.
   `min(1rem, 4vw)` below 48rem and 1.5rem from 48rem. It follows the
   window, not the text size, so at 200% text the content keeps its width
   (WCAG 1.4.4). Below 22.4rem (a 320 px phone) the frame and padding go: the
-  plate becomes a flat section under a 1 px `line` rule (4, "Depth").
+  plate becomes a flat section under a 1 px `line` rule (4, "Depth"). A
+  flat plate has no padding to pull a table into, so its table rows have
+  no side padding inside the highlight either (8.3); that is by design.
 - **The title band.** Every plate's title (its first shown part, after
   any hidden inputs, when that is its `h2` or a section head that holds
   the title and its actions) sits in a raised band: a `raised` face
@@ -1941,9 +1965,8 @@ it a card or a plate alike; the class is `card` or `panel`.
   Upload a save in the rail (8.3); the Users page puts the list beside
   Your password (8.15). Other two-column places: the world Overview (the save's players and
   managing rows beside a side column of sharing from 72rem, 8.2), the
-  factorio.com account page and Generate (8.6). The account page keeps the
-  80rem page width every form-only settings page has (6, "Shell"), so a
-  plate of short text no longer spans 1760 px with most of it empty.
+  factorio.com account page and Generate (8.6). The account page's two
+  columns share the one page width every page has (6, "Shell").
 - **The status card** is the Server page's `card status-card plate`, the
   Server plate. Its band states the server's state large, behind a 6 px
   rule in the state's colour (7.5); from 64rem the controls share that
@@ -2306,7 +2329,7 @@ Space Age, Last played, Disk use) in the column-name style (8.3), over a
 keeps its own fact names for screen readers, visually hidden there. Every
 row is at least 56 px tall, with its name, chip and values centred on the
 row, on columns shared by every row. The columns are sized to their
-values within the page's 80rem working width (6, "Shell"), so a short list
+values within the page's width (6, "Shell"), so a short list
 does not spread a few words across the page: from 90rem the name takes
 what is left (at least 19rem) and the facts sit in columns of 6, 5, 12 to
 15 and 8rem. Last played wraps between its date, clock and age when it
@@ -2385,7 +2408,13 @@ a version (`.ver`) and a file name are Plex Mono. A row's title (a save's
 name, a snapshot's label, a table's row header) is 16 px at weight 600 in
 `heading`. Every row has a bottom border of
 1px `line` (the last has none). No zebra stripes; a body row under the
-pointer is tinted with `raised`. If a table needs more than
+pointer is tinted with `raised`. Every cell, the first and last too, has
+the same side padding (`--cell-pad`: 12 px, 8 px in a container under
+24rem), so a highlighted row keeps its content clear of the highlight's
+edges, and the table is pulled out by that padding, so at rest its text
+lines up with the plate's title. Below 22.4rem plates lie flat (7.8) and
+`--cell-pad` is 0: a row's text then starts under the title, with no pad
+inside the highlight, by design. If a table needs more than
 four columns, it becomes a list with a `dl` per row (8.2) instead.
 A size cell (`class="num"`) never wraps, so "125" is not parted from
 "B". A timestamp must not split at its hyphens, but a whole `2026-11-03
@@ -2546,9 +2575,13 @@ Classes and their contract:
   follows new lines and sets it. Without script the bar is hidden and the
   whole log shows. On a phone the label and the field share one row, so the
   log starts on the first screen above the command bar, and the filter takes
-  the row under them. While a filter or words are set, a line under the bar
+  the row under them. While a filter or words are set, the count
   (`role="status"`, `text-faint`) says how many lines show ("12 of 1,000
-  lines shown"), once typing pauses; with none it takes no room. When none
+  lines shown"), once typing pauses. On a wide screen it is a line at the
+  bar's foot, end-aligned, kept one line tall while empty, so its words
+  come and go without moving the bar or the log. On a phone it sits at the
+  end of the Follow newest row and adds no row, so the log still starts
+  above the command bar. When none
   match it says "No lines match.", and so does a line over the log.
 - **Times in the game log.** `log.js` splits each line into its time (a
   date and a clock, or the game's elapsed seconds) and its words; the text
@@ -2630,9 +2663,12 @@ and the current step's name is written under them (`flow-steps__now`,
 hidden from screen readers, which read the marks' names). Each mark stays a
 44 px target. The bar is at most 40rem wide on a wide screen.
 
-**The flow's header.** Generate, its Mod settings step and its Map
-settings step show the breadcrumb, the title and the step bar as the
-header, with no Worlds tab row (6, "Sub-navigation"). From a wide screen
+**The flow's header.** Each of the four steps, the world's Mods tab
+included while it is step 2, shows the breadcrumb, the title and the step
+bar as the page header (6, "Shell"), with no Worlds or world tab row (6,
+"Sub-navigation"). On step 2 the title is the step's name, "Mods", and the
+world's name is in the breadcrumb. The four headers have identical crumb,
+title and step-bar boxes, so moving between steps moves none of them. From a wide screen
 the title and the step bar share one row, the bar at the end, and the
 page's one-line description sits under them.
 
@@ -2643,11 +2679,10 @@ settings", "Next: Map settings"), or "Finish" on step 4 (SPEC 5.6).
 Back is a quiet button (`flow-back`) to the nearest earlier step that is a
 link: step 2 goes "Back to the world", step 3 "Back to the mods", step 4
 "Back to mod settings", or "Back to the mods" when step 3 has nothing. Step
-1 has no Back, so its Cancel leads the bar. Steps 1 and 4 use Generate's
-bar (`gen-actions`), step 3 the mod settings form's foot bar (`form-foot`),
-and step 2's Mods tab a bar of the same look as its last block
-(`flow-foot`). On a
-phone Generate's bar stacks in source order. Skip links stay where they
+1 has no Back, so its Cancel leads the bar. Step 1 uses the `form-foot`
+partial (7.1). Steps 3 and 4 write the same `actions form-foot` bar out by
+hand, because the partial has no Back slot. Step 2's Mods tab ends with a
+bar of the same look as its last block (`flow-foot`). Skip links stay where they
 were, as secondary actions. Step 2's review of the plan ends with the same
 `flow-foot` bar, across both of the review's columns and out to its box's
 edges.
@@ -2668,8 +2703,9 @@ in this order:
 
 There is no map form, preview or leave dialog on this page. The world is
 made at once and the browser lands on step 2,
-`/worlds/{id}/mods?generated=1`, where a Done box takes focus: "{name} is
-made. Next, pick its mods or skip this step." A favorite with mods
+`/worlds/{id}/mods?generated=1`, where a Done toast (6, "Toasts") says
+"{name} is made. Next, pick its mods or skip this step." and focus stays
+on the page. A favorite with mods
 lands on the review instead (SPEC 5.12).
 
 **Step 2** is the world's Mods tab, or the review (8.11). For an Unfinished
@@ -2756,12 +2792,15 @@ a column of 20 to 26rem on the right that stays in view while the settings
 change. That column (`gen-preview`) is sticky at `--space-4` from the top,
 as tall as the window between its top and the action bar. Once a
 picture is drawn its order is: the heading and seed, the One planet and All
-planets tabs, Show resource amounts, Preview size, the picture, then the
-download links and the kept note as one tight group. Preview size is above
-the picture so it is always in reach without scrolling. One planet's picture
-is a square sized by the smaller of the column's width and the height left,
-never under 16rem so its amounts stay readable; where the window is tall
-enough the whole pane fits, and below that the pane scrolls on its own; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
+planets tabs, the redraw line (`#preview-status`), Preview size, Show
+demolisher territories, Show resource amounts, the picture, then the
+download links and the kept note as one tight group. The script moves the
+redraw line and Preview size into slots right under the tabs, so they are
+always in reach without scrolling, and a redraw that drops a box or changes
+the picture's height never moves them. One planet's picture is a square as
+wide as the column. Ticking Show resource amounts or opening its text list
+adds content below the picture and never shrinks it; the pane scrolls on
+its own when it is taller than the window; it has a `raised` face, a 1 px `line` edge, `--radius-lg`
 and `--space-4` of padding, and sizes its own controls from its width, as
 the settings do from theirs (8.7). All planets shows its thumbnails three
 to a row, so they read clearly as small beside One planet's picture now that
@@ -2775,9 +2814,10 @@ and a control row, so the controls line up and a field without a hint
 leaves that row blank. Narrower than that it is one column in source order, and on a phone (30rem
 and narrower) the preview comes straight after the preset and seed, so it
 is on the first screens, and the planets' rows in the settings start
-closed. **The action bar** is one bar at the foot of the card, `raised`
-with a 1 px `line` rule above it, running to the card's edges. It ends
-with Back (a ghost button, at the start edge, 8.6), "Preview map" and
+closed. **The action bar** is the form's foot bar (7.1, "One completion
+footer"), written out by hand because the `form-foot` partial has no Back
+slot. Step 4's form is not a plate, so the bar is a framed bar of the
+form's width. It ends with Back (a ghost button, at the start edge, 8.6), "Preview map" and
 "Finish" (primary), the last two set together at the bar's end edge (7.1, "One completion
 footer"). The code has them in the same order, so the screen order, the
 keyboard order and the code order agree (WCAG 1.3.2, 2.4.3). On a phone
@@ -3049,8 +3089,8 @@ close the view, the tab, the setting, and the picture again).
   and is marked `translate="no"` for mod names.
 - **The real-game picture.** On a 2.1 world showing one planet, the
   Download line ends with the quiet button "Draw from a real game (about 15
-  to 40 seconds)" and a toggletip. Pressed, the section is `aria-busy`, a
-  wait line and a progress bar show, and Preview map, Finish
+  to 40 seconds)" and a toggletip. Pressed, the section is `aria-busy`, the
+  working bar (7.6) and its words show, and Preview map, Finish
   and the button itself are `aria-disabled` and blocked until the picture
   arrives, because the draw takes the one preview slot. The result is
   announced once, "Real-game picture ready.", and the focus moves to "Back
@@ -3064,9 +3104,11 @@ close the view, the tab, the setting, and the picture again).
 - **A picture's own actions share its Download line.** On a 2.1 world's
   one picture, "Draw from a real game" and its toggletip follow the
   Download link on the same line, so the pane gives no row of its own to
-  an action the person seldom takes. The line wraps when the pane is
-  narrow and when "Show resource amounts" makes the link longer; the
-  button and its toggletip wrap together, so the icon stays beside the
+  an action the person seldom takes. The link always takes the room of its
+  longest label (`data-room`, an unseen `::after` in the same grid cell),
+  so ticking "Show resource amounts" or the territories box, which makes
+  its words longer, moves neither the link nor the button. The line wraps
+  only when the pane is narrow; the button and its toggletip wrap together, so the icon stays beside the
   button, and the picture always leaves room for the second row. The
   "Download all drawn planets (zip)" link has its own line below both.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
@@ -3083,7 +3125,13 @@ close the view, the tab, the setting, and the picture again).
   once that redraw has landed). The name, the tabs and the download box
   do not count. The newest request wins: a change aborts the request on
   its way (the server stops its run) and a late reply is ignored. A
-  pressed "Preview map" is aborted by a later change too.
+  pressed "Preview map" is aborted by a later change too. While a redraw
+  or Preview map runs, the redraw line (`#preview-status`, the htmx
+  indicator) shows the working bar (7.6) with "Drawing the map preview for
+  the current settings…", or, as Preview map starts, "Making the map
+  preview. This takes a few seconds for each planet." The line's slot is
+  held whether or not it runs, so starting a draw moves nothing; at 320 px
+  its words wrap rather than cut.
 - **One planet or all.** On a world with several planets, a choice under
   the heading line, drawn as a segmented control (radios, as 8.7's groups, one tab stop;
   legend "Preview shows", for screen readers only): **One planet**
@@ -3278,7 +3326,7 @@ close the view, the tab, the setting, and the picture again).
 - **Demolisher territories** (Vulcanus, Space Age). A "Show demolisher
   territories" checkbox (7.2) under the One planet or All planets
   choice, shown only while Vulcanus's picture is shown, off by default,
-  with the hint "Finding them takes a few seconds more." Every preview
+  with no hint. Every preview
   size offered can show them, so it is never turned off. It is a named field,
   so "Preview map" without script reads the territories after the
   pictures, in the same request; a ticked choice is kept in a hidden field
@@ -3286,9 +3334,11 @@ close the view, the tab, the setting, and the picture again).
   for (`POST /generate/preview/territories`, the same form) only once the
   picture has arrived, so the picture never waits; the newest request
   wins, and a new draw, a change of settings or another planet viewed
-  drops the one on its way. Meanwhile a line under the picture says
-  "Finding the demolisher territories…"; that line's height is held while
-  the box is ticked. In the large view the box shares one line with "Show resource
+  drops the one on its way. Meanwhile the working bar under the box (a
+  `.work-slot`, `aria-hidden`) shows "Finding the demolisher territories…",
+  and the announcer says it once as they start. The slot keeps its room
+  while idle, as Show resource amounts' does, so ticking either box moves
+  nothing, in the pane or the large view. In the large view the box shares one line with "Show resource
   amounts" (amounts first) where the view is 48rem wide or more, so paging
   to another planet only empties the line's end; narrower, its row is held
   on every planet of a map with Vulcanus, so the controls never move. Every
@@ -3355,17 +3405,14 @@ close the view, the tab, the setting, and the picture again).
     draw, a change in the settings column, another planet, unticking or
     closing aborts the request and removes the labels at once; the
     server's stored counts make going back quick.
-  - **While counting.** A visible line, "Counting resources in the map…
-    This can take up to a minute.", and an indeterminate `progress` in the
-    `.wait` look (hidden under reduced motion). Unlike the drawing line, the
-    sentence is announced once by the status line when a count starts, also
-    after a redraw or a change of planet, so a person who cannot see the
-    bar still knows it can take a minute; the bar itself is not named
-    again. "Resource amounts ready." follows in the status line. At 320 px
-    the map shifts down while the line shows; that is accepted. On the One
-    planet picture a short "Counting…" shows beside the box while it
-    counts, seen and not said (`aria-hidden`), as the line below the
-    picture may be out of view at 320 px.
+  - **While counting.** The working bar (7.6) with a short "Counting…"
+    shows in the slot under the box, seen and not said (`aria-hidden`); the
+    slot keeps its room while idle, so nothing moves. The whole sentence,
+    "Counting resources in the map… This can take up to a minute.", is
+    announced once by the status line when a count starts, also after a
+    redraw or a change of planet, so a person who cannot see the bar still
+    knows it can take a minute. "Resource amounts ready." follows in the
+    status line.
   - **Labels.** One HTML label per patch placed by percent of the picture
     inside `.map`, beside the territory overlay and before the pin,
     `aria-hidden`, in the same face as the territory labels (white with a
@@ -4117,7 +4164,7 @@ and `…/ban?name=`, in `playeraction.html`. Like the stop form, the page has no
 tabs; its `h1` is the question and Cancel is the way out.
 
 ```html
-<h1 id="confirm-heading">Ban Alice from Family base 2025?</h1>
+<h1>Ban Alice from Family base 2025?</h1>
 <section class="confirm">
   <p>This will:</p>
   <ul>
@@ -4842,19 +4889,17 @@ proxy rule for `/public/` is all it needs.
   mono code box, written as the mod settings note writes them (8.11). From
   64rem it is a 30rem card beside the running world's card, so players see
   the list and where the files go at once; narrower, it follows the list.
-  The page's frame is at most 80rem wide.
+  The page's frame is the one page width (6, "Shell").
 
 **The setting** (`GET /settings/public-mods`, `publicmodssettings.html`)
 is a fourth tab, "Public mods", in the Foreman settings sub-navigation
 (8.15), so from any page it is two clicks away and turning it on is three.
-The state sentence leads, drawn as a switch plate (7.3, "A state plate"):
-a box as wide as its sentence, up to 52rem, with a 4 px start edge, on
-`ok-bg` with an `ok` edge while on, on `surface` with a `border` edge
-while off. Then a `.setting-row` panel: what turning it on shares on the
+The state sentence leads as plain text (`p.page-intro`), not a plate, as
+on the other settings pages (8.15). Then a `.setting-row` panel: what turning it on shares on the
 left (half the card once the card is 60rem wide), the proxy rule with a
 link to the operator guide on the right, and one button that flips the setting ("Turn on the public mods
 page" or "Turn off the public mods page"). While on, "Open the public mods
-page" sits beside it. A Done message confirms each change.
+page" sits beside it. A Done toast confirms each change (6, "Toasts").
 
 New CSS: `.public-world`, `.public-mods` and its `__name`, `__version`
 and `__marks`, in `css/pages/settings.css`.
@@ -5115,8 +5160,10 @@ stylesheet.
 
 Each file is one `@layer` block, and `tokens.css` opens with
 `@layer tokens, base, components, pages;`. A later layer wins over an
-earlier one whatever the selectors, so a page rule restyles a component only
-on purpose, from `pages`. Inside a layer the usual order holds: the heavier
+earlier one whatever the selectors. That is not a licence for a page to
+restyle a component: a page part holds only what that page alone has, and a
+change to how a component looks goes in its shared part (docs/WORKFLOW.md,
+"Where CSS goes"; ADR 0038). Inside a layer the usual order holds: the heavier
 selector wins, then the later rule, so the order of the component files
 matters. The shell comes last among them; the focus ring's gap closes
 `controls.css` so it shows over a control's own shadow, and the link hover
@@ -5127,10 +5174,10 @@ whatever the selectors; a new rule that must beat one of its rules belongs
 in it.
 
 A rule sits in the file of what it styles. A rule that names a page's own
-class or id belongs to that page; a rule that lists containers from several
-pages belongs to the component it styles. A page rule that would beat a
-component in a state the component must keep says so in its selector (for
-example `.terminal .log-frame > .button:not(:active)`).
+class or id belongs to that page, with a one-line comment saying why the
+page needs it; a rule that lists containers from several pages belongs to
+the component it styles. No page rule ends its selector on a shared
+component's class and sets a property.
 
 Each component is defined once. A rule that restyles another is folded into
 that rule, never added as a later override; a component's narrow,
@@ -5155,6 +5202,11 @@ so:
   exception with its reason. Lengths no token names are not caught here.
 - Every file under `static/css/` is listed in `stylesheetParts`, and each is
   one block in its layer.
+- No rule in a page part restyles a shared component: a selector that ends
+  on a class a shared part defines, and sets a property, fails
+  (`TestPagePartsDoNotRestyleSharedComponents`). The 236 restyles that
+  predate the rule are listed in `pageRestylesToFix` for #1017; a stale
+  entry fails, so the list only shrinks.
 
 ## 12. Deliberately deferred
 
