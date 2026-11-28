@@ -1,13 +1,13 @@
 {{define "title"}}{{t "apitokens.revoke.question" "name" .Page.Token.Name "owner" .Page.Token.Owner}}{{end}}
 
 {{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") apiTokensPath (t "apitokens.tab"))}}{{end}}
-{{define "head-title"}}<span id="confirm-heading">{{t "apitokens.revoke.question" "name" .Page.Token.Name "owner" .Page.Token.Owner}}</span>{{end}}
+{{define "head-title"}}{{t "apitokens.revoke.question" "name" .Page.Token.Name "owner" .Page.Token.Owner}}{{end}}
 {{define "head-nav"}}{{template "settings-tabs" "api-token"}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" $}}
 {{with .Page}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{t "apitokens.revoke.stops"}}</li>

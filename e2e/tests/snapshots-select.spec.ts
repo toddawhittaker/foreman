@@ -30,7 +30,10 @@ test("Select all automatic says what it ticked and moves focus to it", { tag: "@
   await page.goto("/worlds/second/snapshots");
   await page.getByRole("link", { name: /^Restore Only a manual one/ }).click();
   await page.getByRole("button", { name: "Restore snapshot" }).click();
-  await expect(page).toHaveURL(/\/worlds\/second\/snapshots\?(restored|undo)=/);
+  // The restore ends on the world's Snapshots tab with its toast; the toast
+  // drops the result parameter from the address (DESIGN 6, Toasts, Shown once).
+  await expect(page.locator("#toasts").getByText(/The world is restored\. Foreman took the snapshot "Before restore" first/)).toBeVisible();
+  await expect(page).toHaveURL(/\/worlds\/second\/snapshots$/);
 
   await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
   await expect(page.locator("#tick-note")).toHaveText("Select all automatic ticked 1 snapshot.");

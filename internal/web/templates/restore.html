@@ -1,6 +1,6 @@
 {{define "title"}}{{if .Page.ModUndo}}{{t "server.restore.mods.title" "world" .Page.WorldName}}{{else}}{{t "server.restore.title" "world" .Page.WorldName}}{{end}}{{end}}
 
-{{define "head-title"}}<span id="confirm-heading">{{with .Page}}{{if .ModUndo}}{{t "server.restore.mods.heading" "world" .WorldName}}{{else}}{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}{{end}}{{end}}</span>{{end}}
+{{define "head-title"}}{{with .Page}}{{if .ModUndo}}{{t "server.restore.mods.heading" "world" .WorldName}}{{else}}{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}{{end}}{{end}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
@@ -13,7 +13,7 @@
   <div class="actions"><a href="{{.UndoPath}}">{{t "server.restore.undo_link" "label" (m "worlds.snapshot.label.before_restore")}}</a></div>
 </div>
 {{- end}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   {{- /* What undo does to the mods comes first, in the admin's words; the steps that do it follow (SPEC 17.5). */}}
   {{- with .ModUndo}}
   <p>{{tHTML "server.restore.mods.lead" "label" (snapLabel $.Page.Snapshot) "time" (momentUTC $.Page.Snapshot.TakenAt)}}</p>

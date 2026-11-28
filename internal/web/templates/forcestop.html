@@ -1,11 +1,11 @@
 {{define "title"}}{{t "server.force.title" "world" .Page.World.Name}}{{end}}
 
-{{define "head-title"}}<span id="confirm-heading">{{t "server.force.heading" "world" .Page.World.Name}}</span>{{end}}
+{{define "head-title"}}{{t "server.force.heading" "world" .Page.World.Name}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" .}}
 {{with .Page}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{t "server.force.at_once"}}</li>

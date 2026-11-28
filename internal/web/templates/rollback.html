@@ -1,13 +1,13 @@
 {{define "title"}}{{t "server.rollback.title" "world" .Page.World.Name}}{{end}}
 
-{{define "head-title"}}<span id="confirm-heading">{{with .Page}}{{if .Version}}{{t "server.rollback.heading" "from" .World.GameVersion "to" .Version}}{{else}}{{t "server.rollback.title" "world" .World.Name}}{{end}}{{end}}</span>{{end}}
+{{define "head-title"}}{{with .Page}}{{if .Version}}{{t "server.rollback.heading" "from" .World.GameVersion "to" .Version}}{{else}}{{t "server.rollback.title" "world" .World.Name}}{{end}}{{end}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{template "pagehead" $}}
 {{template "summary" .Problems}}
 {{- if .Version}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   <p><strong>{{t "common.label.warning"}}</strong> {{t "server.rollback.warning" "from" .World.GameVersion "to" .Version}}</p>
   <p>{{t "common.confirm.will"}}</p>
   <ul>

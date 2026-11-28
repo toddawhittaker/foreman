@@ -1,6 +1,6 @@
 {{define "title"}}{{if .Page.IsBan}}{{t "players.ban.heading" "name" .Page.Name "world" .Page.World.Name}}{{else}}{{t "players.kick.heading" "name" .Page.Name "world" .Page.World.Name}}{{end}}{{end}}
 
-{{define "head-title"}}{{with .Page}}<span id="confirm-heading">{{if .IsBan}}{{t "players.ban.heading" "name" .Name "world" .World.Name}}{{else}}{{t "players.kick.heading" "name" .Name "world" .World.Name}}{{end}}</span>{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{if .IsBan}}{{t "players.ban.heading" "name" .Name "world" .World.Name}}{{else}}{{t "players.kick.heading" "name" .Name "world" .World.Name}}{{end}}{{end}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" .}}
@@ -17,7 +17,7 @@
   <div class="actions"><a href="{{.Back}}">{{t "players.back"}}</a></div>
 </div>
 {{- else}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     {{- if .IsBan}}
