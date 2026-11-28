@@ -315,6 +315,9 @@ test.describe("at 360 px", () => {
   test("the save's players table and the Server page's players table stay inside their boxes", async ({ page, foreman, fakeGame }) => {
     await seed(page, foreman, fakeGame);
     await page.goto("/worlds/base");
+    // A fresh world opens on "Reading the newest save." and its table comes
+    // by the section's 3 s poll (SPEC 8.16, 16.3), a live update: wait for the read to end.
+    await expect(page.locator("#save-players-status")).toHaveCount(0, live);
     await expect(page.locator("#save-players-table")).toBeVisible();
     expect(await noSidewaysScroll(page, "#save-players-table")).toEqual({ page: true, clipped: [], inPlate: true });
 

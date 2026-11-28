@@ -1,12 +1,12 @@
 {{define "title"}}{{t "server.update.title" "world" .Page.World.Name}}{{end}}
 
-{{define "head-title"}}<span id="confirm-heading">{{with .Page}}{{t "server.update.heading" "world" .World.Name "version" .World.GameVersion}}{{end}}</span>{{end}}
+{{define "head-title"}}{{with .Page}}{{t "server.update.heading" "world" .World.Name "version" .World.GameVersion}}{{end}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{template "pagehead" $}}
 {{template "summary" .Problems}}
-<section class="confirm" aria-labelledby="confirm-heading">
+<section class="confirm">
   <form method="post" action="{{.Path}}" novalidate>
     {{- if .Target}}
     <input type="hidden" name="game_version_opened" value="{{.Target}}">

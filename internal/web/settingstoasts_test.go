@@ -98,10 +98,9 @@ func TestGeneralSaveThatTrimsSaysSoInThePage(t *testing.T) {
 	}
 }
 
-// The confirm pages name their question by the heading, so a screen reader
-// hears the question when it lands in the confirm section, as on Force stop,
-// Switch and a player action.
-func TestConfirmPagesAreNamedByTheirHeading(t *testing.T) {
+// DESIGN 7.4: the settings confirm pages, like every confirmation, have one
+// name for their question, the h1; the box carries none of its own.
+func TestSettingsConfirmPagesDoNotRepeatTheirHeading(t *testing.T) {
 	r := newTestRenderer(t)
 	for _, p := range []Page{
 		UserDeletePage{User: UserRow{ID: 3, Username: "dave", Kind: SignInProxy}, Tokens: 2},
@@ -110,12 +109,11 @@ func TestConfirmPagesAreNamedByTheirHeading(t *testing.T) {
 		GeneralConfirmPage{Trim: trimCount{Snapshots: 3, Worlds: 2}, Hidden: []GeneralHidden{{Name: "snapshot_retention", Value: "2"}}},
 	} {
 		_, body := render(t, r, pageCase{status: 200, user: "alice", page: p})
-		h1 := between(body, "<h1", "</h1>")
-		if !strings.Contains(h1, `<span id="confirm-heading">`) {
-			t.Errorf("%T: the heading has no confirm-heading: %q", p, h1)
+		if h1 := between(body, "<h1", "</h1>"); strings.Contains(h1, "<span") {
+			t.Errorf("%T: the heading wraps its question in a span: %q", p, h1)
 		}
-		if !strings.Contains(body, `<section class="confirm" aria-labelledby="confirm-heading">`) {
-			t.Errorf("%T: the confirm section is not named by its heading", p)
+		if !strings.Contains(body, `<section class="confirm">`) || strings.Contains(body, `aria-labelledby="confirm-heading"`) {
+			t.Errorf("%T: the confirm box is not one plain section with no name of its own", p)
 		}
 	}
 }

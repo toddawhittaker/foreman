@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
 	"github.com/toddawhittaker/foreman/internal/world"
 )
@@ -206,8 +207,10 @@ func TestSnapshotsResultLinksToItsSnapshot(t *testing.T) {
 	}
 }
 
-// The confirmation pages name their section by the page's heading.
-func TestWorldsConfirmationsAreNamed(t *testing.T) {
+// DESIGN 7.4: a confirmation's one name is its h1, which holds the question
+// itself; the box carries no landmark name of its own, so a screen reader
+// does not hear the question twice.
+func TestConfirmationsDoNotRepeatTheirHeading(t *testing.T) {
 	at := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
 	sum := world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.1"}
 	snap := world.Snapshot{Name: "20261102T120000Z", Manifest: world.Manifest{TakenAt: at}}
@@ -219,13 +222,16 @@ func TestWorldsConfirmationsAreNamed(t *testing.T) {
 		"snapshot delete": SnapshotDeletePage{WorldID: "base", WorldName: "Base", Snapshot: snap},
 		"bulk delete":     SnapshotBulkDeletePage{Items: []DeleteItem{{WorldID: "base", WorldName: "Base", Snapshot: snap}}},
 		"favorite delete": FavoriteDeletePage{Favorite: FavoriteRow{world.Favorite{ID: "f", Name: "Club"}}},
+		"force stop":      ForceStopPage{World: sum},
+		"switch":          SwitchPage{From: sum, To: world.Summary{ID: "other", Name: "Other"}},
+		"kick":            PlayerActionPage{World: sum, Action: game.PlayerKick, Name: "Alice", Online: true},
 	} {
 		body := pageHTML(t, p)
-		if !strings.Contains(body, `<h1><span id="confirm-heading">`) {
-			t.Errorf("%s: the heading has no confirm-heading", name)
+		if h1 := between(body, "<h1", "</h1>"); strings.Contains(h1, "<span") {
+			t.Errorf("%s: the heading wraps its question in a span: %q", name, h1)
 		}
-		if !strings.Contains(body, `<section class="confirm" aria-labelledby="confirm-heading">`) {
-			t.Errorf("%s: the confirmation is not named", name)
+		if !strings.Contains(body, `<section class="confirm">`) || strings.Contains(body, `aria-labelledby="confirm-heading"`) {
+			t.Errorf("%s: the confirm box is not one plain section with no name of its own", name)
 		}
 	}
 }
