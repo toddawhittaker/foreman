@@ -107,13 +107,29 @@ test("a result is a toast: the control just used and the page around it keep the
     await button.scrollIntoViewIfNeeded();
     const before = await boxes(page, watched);
     await button.click();
-    await expect(page).toHaveURL(/renamed=/);
     await expect(page.locator("#toasts .toast--success")).toBeVisible();
     await page.waitForLoadState("networkidle");
     expect(await boxes(page, watched), label).toEqual(before);
     expect(await page.locator("main .message--success").count(), `${label}: no message in the page`).toBe(0);
   });
   await checkPage(page);
+});
+
+// Known gap: the rename posts and redirects, so the new page loads at the top.
+test.fixme("a rename keeps the page's scroll", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedSecond(foreman);
+  await each(page, async (label) => {
+    await settled(page, "/worlds/second");
+    const button = page.locator('form[action$="/rename"] button[type="submit"]');
+    await button.scrollIntoViewIfNeeded();
+    const y = await scrollY(page);
+    await button.click();
+    await expect(page.locator("#toasts .toast--success")).toBeVisible();
+    await page.waitForLoadState("networkidle");
+    expect(await scrollY(page), `${label}: scroll`).toBe(y);
+  });
 });
 
 test("sibling tabs draw the page header in one place", async ({ page, foreman }) => {
@@ -170,7 +186,7 @@ test("the factory map with no picture starts at the tab row's edge", async ({ pa
   const tabs = (await page.locator("main .pagehead > nav").boundingBox())!;
   for (const s of ["main .factorymap__summary", "main .factorymap-mode"]) {
     const b = page.locator(s);
-    if ((await b.count()) === 0) continue;
+    await expect(b, s).toHaveCount(1);
     expect((await b.boundingBox())!.x, s).toBe(tabs.x);
   }
 });
@@ -185,4 +201,66 @@ test("side-by-side plates on Saves have title bands of one height, and the expor
   expect(bands[0]).toBe(bands[1]);
   await page.goto("/worlds/base");
   expect(await page.locator("#export-hint").evaluate((e) => e.closest(".world-share__head") === null && e.closest(".world-share__body") !== null)).toBe(true);
+});
+
+// DESIGN 6, "Toasts", "Shown once": a toast built from a result parameter
+// drops it from the address once shown, keeping the other parameters and the
+// hash, so a reload or Back shows and announces nothing again.
+test("a result toast shows once: the address loses its parameter and a reload shows none", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedSecond(foreman);
+  await takeSnapshot(page, "second", "Kept");
+  // The snapshot's name, from its Restore button's id.
+  const taken = (await page.locator('main a[id^="restore-"]').first().getAttribute("id"))!.slice("restore-".length);
+  for (const c of [
+    { path: "/worlds/second", param: "renamed", value: "Second", text: "Renamed to Second." },
+    { path: "/worlds/second", param: "imported", value: "1", text: "Imported Second" },
+    { path: "/worlds/second/snapshots", param: "taken", value: taken, text: 'Foreman took the snapshot "Kept".' },
+    { path: "/snapshots", param: "removed", value: "2", text: "Foreman deleted 2 snapshots." },
+    { path: "/worlds/second/saves", param: "chosen", value: "1", text: "" },
+  ]) {
+    const what = `${c.path}?${c.param}`;
+    await page.goto(`${c.path}?keep=1&${c.param}=${encodeURIComponent(c.value)}#main`);
+    const toast = page.locator("#toasts [data-toast]");
+    await expect(toast, what).toHaveCount(1);
+    if (c.text) await expect(toast, what).toContainText(c.text);
+    await expect.poll(() => new URL(page.url()).searchParams.has(c.param), what).toBe(false);
+    const url = new URL(page.url());
+    expect(url.searchParams.get("keep"), `${what}: other parameters stay`).toBe("1");
+    expect(url.hash, `${what}: the hash stays`).toBe("#main");
+    await page.reload();
+    await expect(page.locator("main h1"), what).toBeVisible();
+    await expect(page.locator("#toasts [data-toast]"), `${what}: after a reload`).toHaveCount(0);
+  }
+});
+
+// The toast leaves after a while; the way to the snapshot it named stays.
+test("after a snapshot is taken the page links to it", async ({ page, foreman }) => {
+  await createAdmin(page);
+  seedWorld(foreman);
+  seedSecond(foreman);
+  await takeSnapshot(page, "second", "Linked");
+  const link = page.getByRole("link", { name: "Go to the snapshot" });
+  await expect(link).toBeVisible();
+  const target = (await link.getAttribute("href"))!;
+  await expect(page.locator(target)).toHaveCount(1);
+  await checkPage(page);
+});
+
+// The worlds list's Generate and Import buttons in the page header draw their icons.
+test("the worlds list's header buttons draw their icons", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/worlds");
+  for (const name of ["Generate", "Import"]) {
+    const button = page.locator("main .pagehead__actions").getByRole("link", { name: new RegExp(`^${name}`) });
+    await expect(button, name).toHaveCount(1);
+    const icon = await button.evaluate((e) => {
+      const s = getComputedStyle(e, "::before");
+      return { content: s.content, mask: s.maskImage || s.webkitMaskImage, width: s.width };
+    });
+    expect(icon.content, name).not.toBe("none");
+    expect(icon.mask, name).toMatch(/url\(/);
+    expect(icon.width, name).toBe("18px");
+  }
 });

@@ -901,6 +901,18 @@ frame (7.4).
     returns it to where it was before, else to `main`. Escape closes the
     newest toast, unless focus is in a text field, a menu or a dialog, or a
     menu or dialog is open.
+  - **Shown once.** A page that builds a toast from a result parameter in
+    the address, such as `?renamed=` after a redirect, names it, and the
+    toast drops it: the `Toast`'s `Drop` field lists the parameters,
+    `toast.html` writes them as `data-drop="renamed"`, and `toast.js` takes
+    them out of the address with `history.replaceState` once the toast is
+    armed, keeping every other parameter and the hash. A reload or Back then
+    shows no toast and announces nothing. What the result offers next in
+    the page, such as a link to the snapshot it named, goes with it.
+  - **Words.** The text is printed with `msgHTML`, which escapes the
+    sentence and every plain argument and adds only a fragment's own markup,
+    so a time in it is a `<time>` element the page shows in the browser's
+    zone (SPEC 17.11).
 
 - Viewport media queries are used for the shell (the bar's rows, the
   page's padding and width, plate padding, the tab icons) and where a

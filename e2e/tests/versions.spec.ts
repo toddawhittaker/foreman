@@ -191,7 +191,7 @@ test.describe("with the fake game", () => {
     await expect(page.getByLabel("Countdown in seconds")).toHaveCount(0);
     await checkPage(page);
     await page.getByRole("button", { name: "Roll back to 2.1.24" }).click();
-    await expect(page).toHaveURL(/\/worlds\/base\/snapshots\?undo=/);
+    await expect(page).toHaveURL(/\/worlds\/base\/snapshots(\?undo=.*)?$/);
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
     await expect(page.locator("main")).toContainText("Before restore");
     expect(await creates(g)).toBe(before);
@@ -301,7 +301,7 @@ test.describe("with the fake game", () => {
     await page.getByLabel("Or type a version").fill("2.1.25");
     await page.getByRole("button", { name: "Update game version" }).click();
 
-    await expect(page).toHaveURL("/worlds/second?result=1");
+    await expect(page).toHaveURL(/\/worlds\/second(\?result=1)?$/);
     // The reloaded page sums up the result in a toast, which the announcer
     // reads out and which never takes focus (DESIGN 6, "Toasts").
     const result = page.locator("#toasts .toast--success");
@@ -323,7 +323,7 @@ test.describe("with the fake game", () => {
     await page.getByRole("link", { name: "Roll back to 2.1.24" }).click();
     await checkPage(page);
     await page.getByRole("button", { name: "Roll back to 2.1.24" }).click();
-    await expect(page).toHaveURL(/\/worlds\/second\/snapshots\?undo=/);
+    await expect(page).toHaveURL(/\/worlds\/second\/snapshots(\?undo=.*)?$/);
     expect(diskVersion(foreman, "second")).toBe("2.1.24");
     expect(await creates(g)).toBe(before);
     expect(foreman.logs()).not.toMatch(/"level":"ERROR"/);
@@ -367,7 +367,7 @@ test.describe("with the fake game", () => {
     await page.goto("/worlds/second/update");
     await page.getByLabel("Or type a version").fill("2.1.25");
     await page.getByRole("button", { name: "Update game version" }).click();
-    await expect(page).toHaveURL("/worlds/second?result=1");
+    await expect(page).toHaveURL(/\/worlds\/second(\?result=1)?$/);
 
     const refusal = page.locator("#world-result .message--warning");
     await expect(refusal).toContainText("base.zip uses Space Age", live);
@@ -380,7 +380,7 @@ test.describe("with the fake game", () => {
 
     await refusal.locator("summary", { hasText: "Or update anyway" }).click();
     await refusal.getByRole("button", { name: "Update anyway" }).click();
-    await expect(page).toHaveURL("/worlds/second?result=1");
+    await expect(page).toHaveURL(/\/worlds\/second(\?result=1)?$/);
     await expect(page.locator("#toasts .toast--success")).toContainText("The game version is updated.", live);
     expect(diskVersion(foreman, "second")).toBe("2.1.25");
     expect(diskVersion(foreman, "base")).toBe("2.1.24");

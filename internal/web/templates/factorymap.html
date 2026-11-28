@@ -26,7 +26,7 @@
   </fieldset>
   <label class="check"><input type="checkbox" name="skip_online" value="on"{{if .View.Mode.SkipOnline}} checked{{end}} aria-describedby="fm-skip-hint"><span>{{t "factorymap.mode.skip_online"}}</span></label>
   <p class="hint" id="fm-skip-hint">{{t "factorymap.mode.skip_online_hint"}}</p>
-  {{template "form-foot" (formFoot "submit" (t "factorymap.mode.save"))}}
+  <div class="actions"><button type="submit" class="button">{{t "factorymap.mode.save"}}</button></div>
 </form>
 {{- end}}
 </div>
@@ -38,6 +38,22 @@
 <section class="factorymap" id="factorymap-state" data-state="{{.View.State}}" data-fragment="{{.FragmentPath}}" aria-labelledby="fm-heading">
 <h2 id="fm-heading" class="visually-hidden">{{t "factorymap.tab"}}</h2>
 {{- $v := .View}}
+{{- /* Draw comes first, so the state below it may change length and nothing moves it (ruling 1). */}}
+{{- if and .CanDraw (ne $v.State "drawing")}}
+<form method="post" action="{{.DrawPath}}" class="factorymap__draw">
+  {{- if .NeedMemory}}
+  <div class="message message--warning" id="fm-memory-note" tabindex="-1"{{if .Refused.IsZero}} autofocus{{end}}>
+    <p>{{if .MemoryBytes}}{{tHTML "factorymap.draw.memory_size" "size" (nowrap (bytes .MemoryBytes))}}{{else}}{{t "factorymap.draw.memory_note"}}{{end}}</p>
+  </div>
+  <input type="hidden" name="confirm_memory" value="1">
+  <div class="actions"><button type="submit" class="button button--primary" aria-describedby="fm-memory-note">{{t "factorymap.draw.confirm_memory"}}</button></div>
+  {{- else if and $v.PlayersOnline $v.Mode.SkipOnline}}
+  <p class="hint">{{t "factorymap.refused.players_online"}}</p>
+  {{- else}}
+  <div class="actions"><button type="submit" class="button button--primary">{{t "factorymap.draw.button"}}</button></div>
+  {{- end}}
+</form>
+{{- end}}
 <div class="factorymap__summary" data-news>
 {{- if eq $v.State "drawing"}}
   <p aria-busy="true">{{template "working" (t "factorymap.state.drawing")}}</p>
@@ -57,21 +73,6 @@
   <p class="hint">{{tHTML "factorymap.state.drawn" "when" (momentUTCSeconds $v.Drawing.DrawnAt) "save" (code $v.Drawing.Basis.Save) "version" $v.Drawing.GameVersion}}</p>
 {{- end}}
 </div>
-{{- if and .CanDraw (ne $v.State "drawing")}}
-<form method="post" action="{{.DrawPath}}" class="factorymap__draw">
-  {{- if .NeedMemory}}
-  <div class="message message--warning" id="fm-memory-note" tabindex="-1"{{if .Refused.IsZero}} autofocus{{end}}>
-    <p>{{if .MemoryBytes}}{{tHTML "factorymap.draw.memory_size" "size" (nowrap (bytes .MemoryBytes))}}{{else}}{{t "factorymap.draw.memory_note"}}{{end}}</p>
-  </div>
-  <input type="hidden" name="confirm_memory" value="1">
-  <div class="actions"><button type="submit" class="button button--primary" aria-describedby="fm-memory-note">{{t "factorymap.draw.confirm_memory"}}</button></div>
-  {{- else if and $v.PlayersOnline $v.Mode.SkipOnline}}
-  <p class="hint">{{t "factorymap.refused.players_online"}}</p>
-  {{- else}}
-  <div class="actions"><button type="submit" class="button button--primary">{{t "factorymap.draw.button"}}</button></div>
-  {{- end}}
-</form>
-{{- end}}
 {{- with $v.Drawing.Surfaces}}
 {{- $page := $}}
 {{- if gt (len .) 1}}
