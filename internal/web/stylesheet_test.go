@@ -871,7 +871,6 @@ var pageRestylesToFix = map[string]string{
 	"pages/server.css .terminal .log-frame > .button[hidden]":                                                                  "#1017",
 	"pages/server.css .terminal > .panel":                                                                                      "#1017",
 	"pages/server.css .terminal__log > .hint":                                                                                  "#1017",
-	"pages/server.css .terminal__log > .section-head":                                                                          "#1017",
 	"pages/server.css :is(.button--icon, .server-actions :is(a, button), :is(.server-force-stop, .design-force-stop))::before": "#1017",
 	"pages/server.css table:has(.player-actions) th.num":                                                                       "#1017",
 	"pages/server.css tr:has(> td > .player-actions) > td.num":                                                                 "#1017",

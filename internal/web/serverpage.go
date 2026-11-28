@@ -304,7 +304,8 @@ func loadLevel(v float64) string {
 func (p ServerPage) Busy() bool { return p.Status.Operation != nil && !p.Status.Operation.Done }
 
 // The actions the page offers in the current state. An action that would
-// be refused is left out, and ActionsNote says why (DESIGN 7.1).
+// be refused is disabled while a transition holds its place, and is
+// otherwise left out; ActionsNote says why (DESIGN 7.1).
 func (p ServerPage) CanStart() bool {
 	s := p.Status.State
 	return !p.Busy() && (s == game.StateStopped || s == game.StateCrashLooping)
@@ -505,6 +506,62 @@ func (p ServerPage) CanStop() bool {
 
 func (p ServerPage) CanRestart() bool {
 	return !p.Busy() && p.Status.State == game.StateRunning
+}
+
+// The plate's buttons keep their place across states (DESIGN 6, "Controls
+// stay put"): Take snapshot leads in every state, then the state's own
+// buttons. While a start, stop or restart is under way the buttons of the
+// state it began in stay, disabled, so nothing moves until it settles.
+
+// transition reports whether the server is between states.
+func (p ServerPage) transition() bool {
+	s := p.Status.State
+	return p.Busy() || s == game.StateStarting || s == game.StateStopping
+}
+
+// runControls reports whether the state's own buttons are the running
+// game's, Restart and Stop, rather than Start.
+func (p ServerPage) runControls() bool {
+	if p.Busy() {
+		switch p.Status.Operation.Action {
+		case game.AuditRestart, game.AuditStop:
+			return true
+		case game.AuditStart:
+			return false
+		}
+	}
+	switch p.Status.State {
+	case game.StateRunning, game.StateStopping, game.StateCrashed:
+		return true
+	}
+	return false
+}
+
+// ShowStart, ShowRestart and ShowStop say whether each button is drawn; a
+// drawn button the state refuses is disabled.
+func (p ServerPage) ShowStart() bool {
+	if p.CanStart() {
+		return true
+	}
+	switch p.Status.State {
+	case game.StateStopped, game.StateCrashLooping, game.StateStarting:
+		return p.transition() && !p.runControls()
+	}
+	return false
+}
+
+func (p ServerPage) ShowRestart() bool {
+	return p.CanRestart() || (p.transition() && p.runControls() && p.Status.State != game.StateCrashed)
+}
+
+func (p ServerPage) ShowStop() bool {
+	return p.CanStop() || (p.transition() && p.runControls())
+}
+
+// SnapshotLeads is true while the game runs, through a stop or restart:
+// Take snapshot is then the plate's primary (DESIGN 7.1).
+func (p ServerPage) SnapshotLeads() bool {
+	return p.runControls() && p.Status.State != game.StateCrashed
 }
 
 func (p ServerPage) CanForceStop() bool {

@@ -22,7 +22,8 @@
 <div sse-swap="facts" hidden></div>
 <div sse-swap="announce" hidden></div>
 <section class="panel chat-plate" aria-labelledby="chat-heading">
-  <h2 id="chat-heading" class="visually-hidden">{{t "common.nav.chat"}}</h2>
+  {{- /* The plate's title, in its raised band like every plate's (DESIGN 7, "The title band"). */}}
+  <h2 id="chat-heading">{{t "common.nav.chat"}}</h2>
   {{- /* Always there. The style sheet shows it, and only it, while the heading's live badge says the game is not running, and shows the log and the form while it runs, so the page follows the game without a reload (DESIGN 8.14). */}}
   <div class="chat-not-running">
     {{template "empty" (empty "chat" (t "chat.not_running") "chat-not-running")}}

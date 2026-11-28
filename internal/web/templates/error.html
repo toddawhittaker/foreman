@@ -1,6 +1,8 @@
 {{define "title"}}{{msg .Page.Heading}}{{end}}
 
 {{define "head-title"}}{{msg .Page.Heading}}{{end}}
+{{- /* An address under an area keeps the area's tabs, none of them the page shown (DESIGN 6, "Sub-navigation"). */}}
+{{define "head-nav"}}{{with .Page}}{{if eq .AreaTabs "settings"}}{{template "settings-tabs" .SettingsTab}}{{else if eq .AreaTabs "worlds"}}{{template "worlds-area-tabs" ""}}{{end}}{{end}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" .}}

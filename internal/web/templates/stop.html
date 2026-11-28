@@ -1,13 +1,13 @@
 {{define "title"}}{{if .Page.Restart}}{{t "server.stop.restart_title"}}{{else}}{{t "server.stop.title"}}{{end}}{{end}}
 
-{{- /* A confirmation page (DESIGN 7.4): the page header, then the confirm box with Cancel and the action at its foot. */}}
-{{define "head-title"}}{{with .Page}}<span id="stop-heading">{{if .Restart}}{{t "server.stop.restart_heading" "world" .World.Name}}{{else}}{{t "server.stop.heading" "world" .World.Name}}{{end}}</span>{{end}}{{end}}
+{{- /* A confirmation page (DESIGN 7.4): the page header, then the confirm box with Cancel and the action at its foot. A stop or restart destroys nothing, so the box is the plain one. */}}
+{{define "head-title"}}{{with .Page}}{{if .Restart}}{{t "server.stop.restart_heading" "world" .World.Name}}{{else}}{{t "server.stop.heading" "world" .World.Name}}{{end}}{{end}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" .}}
 {{with .Page}}
 {{template "summary" .Problems}}
-<section class="confirm" aria-labelledby="stop-heading">
+<section class="confirm confirm--plain">
   <p>{{if .Restart}}{{t "server.stop.restart_text"}}{{else}}{{t "server.stop.text"}}{{end}}</p>
   <form method="post" action="{{.Path}}" novalidate>
     {{template "countdown" .CountdownForm}}

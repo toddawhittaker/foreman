@@ -123,9 +123,9 @@ test("the About page has the same content, and the dialog is not repeated on it"
 });
 
 // DESIGN 6, "User menu": the rusty wordmark stands above the heading's words
-// in the dialog and on the page, decorative, sharp on a 2x screen, and inside
+// in the dialog and above the facts on the page, decorative, sharp on a 2x screen, and inside
 // the box at phone width. Both themes come from the test projects.
-test("the dialog and the page show the wordmark above the heading", { tag: "@looks" }, async ({ page }) => {
+test("the dialog shows the wordmark above the heading, the page above the facts", { tag: "@looks" }, async ({ page }) => {
   await createAdmin(page);
   const expectWordmark = async (heading: ReturnType<Page["locator"]>) => {
     await expect(heading).toHaveAccessibleName("About Foreman");
@@ -156,8 +156,22 @@ test("the dialog and the page show the wordmark above the heading", { tag: "@loo
   await expectWordmark(dialog(page).getByRole("heading", { level: 2 }));
   await checkPage(page);
   await page.keyboard.press("Escape");
+  // The page's h1 is the shared header's words alone; the wordmark leads its
+  // plate, sharp and inside the plate, above the facts (DESIGN 6, "The page header").
   await page.goto("/about");
-  await expectWordmark(page.getByRole("heading", { level: 1 }));
+  const h1 = page.getByRole("heading", { level: 1 });
+  await expect(h1).toHaveText("About Foreman");
+  await expect(h1.locator("img")).toHaveCount(0);
+  const plate = page.locator("main > .panel");
+  const img = plate.locator("img");
+  await expect(img).toHaveCount(1);
+  await expect(img).toHaveAttribute("alt", "");
+  await expect.poll(() => img.evaluate((el: HTMLImageElement) => el.complete && el.naturalWidth)).toBe(480);
+  const shown = (await img.boundingBox())!;
+  const box = (await plate.boundingBox())!;
+  expect(shown.width).toBeLessThanOrEqual(240);
+  expect(shown.x + shown.width).toBeLessThanOrEqual(box.x + box.width);
+  expect((await plate.locator("#about-facts").boundingBox())!.y).toBeGreaterThanOrEqual(shown.y + shown.height);
   await checkPage(page);
 });
 

@@ -24,16 +24,20 @@
 {{- /* One terminal card: the game log, then past commands, then the command
      row at its foot, as a terminal reads (DESIGN 8.5). */}}
 <div class="card terminal">
+{{- /* The log's title is the card's first part, so it is the plate's raised title band (DESIGN 7, "The title band"). */}}
+<div class="section-head">
+  <h2 id="log-heading">{{t "server.console.log_heading"}}</h2>
+  <a href="{{.LogPath}}" download id="log-download" class="button">{{t "server.console.log_download"}}</a>
+</div>
 <section class="panel terminal__log" aria-labelledby="log-heading">
-  <div class="section-head">
-    <h2 id="log-heading">{{t "server.console.log_heading"}}</h2>
-    <a href="{{.LogPath}}" download id="log-download" class="button">{{t "server.console.log_download"}}</a>
-  </div>
   <p class="hint">{{t "server.console.log_hint" "count" .MaxLines}}</p>
   {{- /* Finding and filtering are the script's; without it the bar stays hidden (DESIGN 8.5). */}}
   <div class="log-tools" hidden>
-    <label for="log-find">{{t "server.console.find"}}</label>
-    <input id="log-find" class="log-tools__find" type="text" autocomplete="off" spellcheck="false">
+    {{- /* A field like every other: its label above it in the body colour, 44 px tall (DESIGN 6, 7.2). */}}
+    <div class="field log-tools__find">
+      <label for="log-find">{{t "server.console.find"}}</label>
+      <input id="log-find" type="text" autocomplete="off" spellcheck="false">
+    </div>
     <fieldset class="segmented log-tools__filter">
       <legend class="visually-hidden">{{t "server.console.filter"}}</legend>
       <label><input type="radio" name="log-filter" value="" checked> {{t "server.console.filter_all"}}</label>
