@@ -75,7 +75,7 @@ func TestReviewOfAnUnfinishedWorldInstallsAndGoesOn(t *testing.T) {
 	id := g.unfinished20("Fresh")
 	_, body := g.getStatus(kindPlanPath(id, "install", "alpha"))
 	wantIn(t, "review", body, `aria-label="Steps to make the world"`, `href="`+modsPath(id)+`" aria-current="step"`,
-		`<div class="actions flow-foot">`, `<a href="`+modsPath(id)+`" class="flow-back" id="flow-back">Back to the mods</a>`,
+		`<div class="actions form-foot">`, `<a href="`+modsPath(id)+`" class="flow-back" id="flow-back">Back to the mods</a>`,
 		`href="`+flowModSettingsPath(id)+`" id="plan-skip"`)
 	wantIn(t, "review text", plain(body), "Skip to mod settings", `id="act-apply">Next: Mod settings</button>`)
 	// The footer is the page's one set of actions: no Cancel, no Install.
@@ -115,10 +115,10 @@ func TestReviewOfAnotherKindInTheFlowKeepsItsActions(t *testing.T) {
 	id := g.unfinished20("Fresh")
 	g.writeMod(id, "alpha", "1.0.0")
 	_, body := g.getStatus(kindPlanPath(id, "update", ""))
-	if strings.Contains(body, "flow-foot") {
+	if strings.Contains(body, `id="flow-back"`) {
 		t.Error("an update's review has step 2's footer")
 	}
-	wantIn(t, "update", plain(body), ">Cancel, change nothing</a>", `id="act-apply">Update 1 mod`)
+	wantIn(t, "update", plain(body), ">Cancel, change nothing</a>", `id="act-apply"><span data-label>Update 1 mod`)
 	g.wantRedirectTo(modsPath(id)+ownResultQuery, g.post(modsPath(id)+"/plan", planValues(t, body)))
 }
 
