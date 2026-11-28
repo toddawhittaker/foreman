@@ -205,18 +205,35 @@
 <script src="{{static "nowarning.js"}}" defer></script>
 {{- end}}
 
-{{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. */}}
+{{/* The error summary at the top of a form (DESIGN 7.2). Takes []Problem. Its heading is an h2; "summary-h3" is the same summary for a form inside a section that is already an h2. */}}
 {{define "summary" -}}
 {{with .}}
 <div class="message message--error" id="error-summary" tabindex="-1" autofocus>
-  <h2 id="error-summary-heading"><strong>{{t "common.error.label"}}</strong> {{t "common.summary.heading" "count" (len .)}}</h2>
-  <ul>
+  <h2 id="error-summary-heading">{{template "summary-title" .}}</h2>
+  {{template "summary-list" .}}
+</div>
+{{end}}
+{{- end}}
+
+{{define "summary-h3" -}}
+{{with .}}
+<div class="message message--error" id="error-summary" tabindex="-1" autofocus>
+  <h3 id="error-summary-heading">{{template "summary-title" .}}</h3>
+  {{template "summary-list" .}}
+</div>
+{{end}}
+{{- end}}
+
+{{define "summary-title" -}}
+<strong>{{t "common.error.label"}}</strong> {{t "common.summary.heading" "count" (len .)}}
+{{- end}}
+
+{{define "summary-list" -}}
+<ul>
     {{- range .}}
     <li><a href="#{{.FieldID}}">{{msgHTML .Message}}</a></li>
     {{- end}}
   </ul>
-</div>
-{{end}}
 {{- end}}
 
 {{/* The note that explains the asterisk on required fields (DESIGN 7.2). Screen

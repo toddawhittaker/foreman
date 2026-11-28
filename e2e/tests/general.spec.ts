@@ -130,9 +130,12 @@ test("confirming saves every value and deletes nothing yet", { tag: "@looks" }, 
   await page.getByRole("button", { name: "Save settings" }).click();
   await page.locator("section.confirm").getByRole("button", { name: "Save settings" }).click();
   await expect(page).toHaveURL("/settings/general?done=saved");
-  // The count sums up the save, so it is in the Saved toast.
-  const trim = page.locator("#toasts .toast--success");
-  await expect(trim).toContainText("3 automatic snapshots will be removed");
+  // The toast says only Saved, and closes; the count, the one record of what
+  // the save will remove, stays in the page as plain text.
+  await expect(page.locator("#toasts .toast--success")).toContainText("Saved. The new settings apply from now on.");
+  await expect(page.locator("#toasts .toast--success")).not.toContainText("snapshots will be removed");
+  await expect(page.locator("#general-trim")).toContainText("3 automatic snapshots will be removed");
+  await expect(page.locator("#general-trim")).toContainText("Worlds affected: 1.");
   await expect(retention(page)).toHaveValue("1");
   await expect(modLimit(page)).toHaveValue("300");
   await checkPage(page);
@@ -169,4 +172,27 @@ test("the page is translated", async ({ page }) => {
 test("the page needs a signed-in user", async ({ page }) => {
   const res = await page.request.get("/settings/general", { maxRedirects: 0 });
   expect(res.status()).not.toBe(200);
+});
+
+// WCAG 2.4.11: at 400% zoom a 1280 x 1024 window is 320 x 256 CSS pixels. The
+// save bar wraps onto several lines there, and a field tabbed to above it
+// still scrolls fully clear of it.
+test("at 320 px and 400% zoom the last field above the save bar is fully visible when focused", { tag: "@looks" }, async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 256 });
+  await createAdmin(page);
+  await page.goto("/settings/general");
+  // Tab on from the field before it, with the page not yet at its end.
+  await page.locator("#general-update-check").focus();
+  await page.evaluate(() => window.scrollTo(0, 0));
+  for (let i = 0; i < 4 && !(await page.locator("#general-wiki-icons").evaluate((el) => el === document.activeElement)); i++) await page.keyboard.press("Tab");
+  await expect(page.locator("#general-wiki-icons")).toBeFocused();
+  await expect
+    .poll(async () =>
+      page.evaluate(() => {
+        const field = document.getElementById("general-wiki-icons")!.getBoundingClientRect();
+        const bar = document.querySelector(".form-foot")!.getBoundingClientRect();
+        return { clear: field.bottom <= bar.top, inView: field.top >= 0 };
+      }),
+    )
+    .toMatchObject({ clear: true, inView: true });
 });

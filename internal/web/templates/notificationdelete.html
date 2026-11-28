@@ -1,13 +1,13 @@
 {{define "title"}}{{t "notify.delete.question" "preset" (msg .Page.Hook.Preset) "host" .Page.Hook.Host}}{{end}}
 
 {{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") notificationsPath (t "common.menu.notifications"))}}{{end}}
-{{define "head-title"}}{{t "notify.delete.question" "preset" (msg .Page.Hook.Preset) "host" .Page.Hook.Host}}{{end}}
+{{define "head-title"}}<span id="confirm-heading">{{t "notify.delete.question" "preset" (msg .Page.Hook.Preset) "host" .Page.Hook.Host}}</span>{{end}}
 {{define "head-nav"}}{{template "settings-tabs" "notification"}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" $}}
 {{with .Page}}
-<section class="confirm">
+<section class="confirm" aria-labelledby="confirm-heading">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{t "notify.delete.stops"}}</li>

@@ -38,7 +38,7 @@
   {{- if eq .MyKind "password"}}
   <form method="post" action="{{.PasswordPath}}" class="form-stack" novalidate>
     {{- /* The summary leads the form it is about, so the list beside it keeps its place. */}}
-    {{- template "summary" .Problems}}
+    {{- template "summary-h3" .Problems}}
     {{template "required-note"}}
     <div class="field">
       <label for="password-current" class="required">{{t "users.password.current"}}</label>

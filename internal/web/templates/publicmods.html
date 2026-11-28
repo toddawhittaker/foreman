@@ -54,7 +54,7 @@
 {{template "pagehead" .}}
 {{with .Page}}
 {{- if not .Worlds}}
-<section class="panel public-world" aria-label="{{t "publicmods.title"}}">
+<section class="panel public-world">
   {{template "empty" (empty "mods" (t "publicmods.none") "public-none")}}
 </section>
 {{- end}}

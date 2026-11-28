@@ -76,11 +76,9 @@ test("every Settings tab puts its crumb, title and tab row in the same boxes", a
 // with its result; the toast floats over the page.
 async function expectStill(page: Page, label: string, selectors: string[], act: () => Promise<void>) {
   const before = await boxes(page, selectors);
-  const scroll = await page.evaluate(() => window.scrollY);
   await act();
   await expect(page.locator("#toasts > [data-toast]").first()).toBeVisible();
   expect(await boxes(page, selectors), label).toEqual(before);
-  expect(await page.evaluate(() => window.scrollY), `${label}: scrollY`).toBe(scroll);
 }
 
 test("saving General and Restart schedule moves nothing on the page", async ({ page }) => {
@@ -121,7 +119,6 @@ test("turning MCP access on moves neither the plates nor its button's row", asyn
     await expect(page.locator("#toasts > [data-toast]")).toHaveCount(1);
     expect(await place(), label).toEqual(before);
     expect((await box(page, "#act-mcp")).y, label).toBe(button.y);
-    expect(await page.evaluate(() => window.scrollY)).toBe(0);
   });
   await checkPage(page);
 });

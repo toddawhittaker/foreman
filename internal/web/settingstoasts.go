@@ -26,13 +26,8 @@ func (p GeneralPage) toasts() []Toast {
 	if !p.Saved {
 		return nil
 	}
-	if !p.Trims {
-		return doneToast(i18n.M("general.done"))
-	}
-	trim := i18n.M("server.join",
-		"first", i18n.M("general.trim.snapshots", "count", p.Trim.Snapshots),
-		"second", i18n.M("general.trim.worlds", "count", p.Trim.Worlds))
-	return doneToast(i18n.M("server.join", "first", i18n.M("general.done"), "second", trim))
+	// The trim counts stay in the page, in plain text, after the toast closes.
+	return doneToast(i18n.M("general.done"))
 }
 
 func (p SchedulePage) toasts() []Toast {

@@ -79,20 +79,20 @@
     <details class="disclosure" id="account-replace"{{if .Retype}} open{{end}}>
       <summary id="account-replace-summary">{{t "account.form.replace"}}</summary>
       <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="account-replace-summary">
+        {{template "required-note"}}
         {{- if .Retype}}
         <div class="message message--note"><p><strong>{{t "common.label.note"}}</strong> {{t "account.retype"}}</p></div>
         {{- end}}
-        {{template "required-note"}}
         {{template "account-fields" .}}
         {{- with .Return}}
         <input type="hidden" name="return" value="{{.}}">
         {{- end}}
         {{- /* Replacing is rare, so its button stays secondary (DESIGN 8.11); the foot bar's is always the primary. */}}
         <div class="actions">
-          <button type="submit" class="button">{{t "account.replace"}}</button>
           {{- with .Return}}
           <a href="{{.}}" class="button button--ghost">{{t "worlds.cancel"}}</a>
           {{- end}}
+          <button type="submit" class="button">{{t "account.replace"}}</button>
         </div>
       </form>
     </details>
