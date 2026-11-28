@@ -7,7 +7,7 @@ description: |
   pure "run the suite and summarize" with no test design, a cheaper agent
   will do.
 model: opus
-effort: low
+effort: medium
 tools: Bash, Read, Write, Edit, Grep, Glob, Monitor, TaskStop, SendMessage, Agent(Explore)
 hooks:
   Stop:
