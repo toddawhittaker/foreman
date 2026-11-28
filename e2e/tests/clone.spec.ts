@@ -30,7 +30,7 @@ test("clones the active world and keeps its save, in three clicks from the Serve
   await checkPage(page);
 
   await page.getByRole("button", { name: "Clone world" }).click();
-  await expect(page).toHaveURL("/worlds/base-copy?cloned=base");
+  await expect(page).toHaveURL(/\/worlds\/base-copy(\?cloned=base)?$/);
   await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Cloned Base as Base (copy).");
   await expectWithin(clicks, 3, "clone a world, keeping the save");
   await checkPage(page);
@@ -52,7 +52,7 @@ test("a fresh map has no save and a random seed", { tag: "@looks" }, async ({ pa
   await page.getByRole("radio", { name: "Start a fresh map" }).check();
   await page.getByRole("button", { name: "Clone world" }).click();
 
-  await expect(page).toHaveURL("/worlds/clean-slate?cloned=base");
+  await expect(page).toHaveURL(/\/worlds\/clean-slate(\?cloned=base)?$/);
   await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Cloned Base as Clean slate.");
   expect(savesOf(foreman.dataDir, "clean-slate")).toEqual([]);
   const meta = worldJSON(foreman.dataDir, "clean-slate");
@@ -74,7 +74,7 @@ test("a fresh-map clone is made with the keyboard alone", { tag: "@looks" }, asy
   await expect(page.getByRole("radio", { name: "Start a fresh map" })).toBeChecked();
   await tabTo(page, page.getByRole("button", { name: "Clone world" }));
   await page.keyboard.press("Enter");
-  await expect(page).toHaveURL("/worlds/keys-clone?cloned=base");
+  await expect(page).toHaveURL(/\/worlds\/keys-clone(\?cloned=base)?$/);
   expect(savesOf(foreman.dataDir, "keys-clone")).toEqual([]);
   expect(Number.isInteger(worldJSON(foreman.dataDir, "keys-clone").new_map.seed)).toBe(true);
 });
@@ -106,7 +106,7 @@ test("a world without a save offers only a fresh map, as text", async ({ page, f
   await expect(page.locator("#clone-fresh")).toContainText("This world has no save to keep.");
   await checkPage(page);
   await page.getByRole("button", { name: "Clone world" }).click();
-  await expect(page).toHaveURL("/worlds/base-copy?cloned=base");
+  await expect(page).toHaveURL(/\/worlds\/base-copy(\?cloned=base)?$/);
   expect(worldJSON(foreman.dataDir, "base-copy").new_map.seed).toBeGreaterThanOrEqual(0);
 });
 

@@ -144,7 +144,8 @@
    1.75 stroke on a 24 grid, drawn as a mask so each takes its text's colour
    and stays out of the accessible name. An element opts in by setting --icon. */
 .tabs a::before,
-.page-head--row .button::before {
+.page-head--row .button::before,
+.pagehead__actions .button::before {
   flex: none;
   inline-size: 1.125rem;
   block-size: 1.125rem;
@@ -161,6 +162,7 @@ main h2[id]::before {
 
 .tabs a::before,
 .page-head--row .button:is([href$="/generate"], [href$="/import"])::before,
+.pagehead__actions .button:is([href$="/generate"], [href$="/import"])::before,
 main h2:is(#players-heading, #disk-heading, #list-heading, #search-heading, #installed-heading, #sync-heading, #upload-heading, #settings-heading, #version-heading, #rename-heading, #take-heading, #delete-heading, #console-heading, #log-heading, #saves-heading, #folder-heading, #account-env-heading, #account-form-heading, #account-remove-heading, #mod-settings-heading, #mod-settings-map-heading, #clone-heading, #results-heading, #plan-heading, #changes-heading, #admins-heading, #none-heading)::before {
   content: "";
 }
@@ -192,11 +194,13 @@ main h2[id]::before {
   --icon: var(--i-settings);
 }
 
-.page-head--row .button[href$="/generate"] {
+.page-head--row .button[href$="/generate"],
+.pagehead__actions .button[href$="/generate"] {
   --icon: var(--i-plus);
 }
 
-.page-head--row .button[href$="/import"] {
+.page-head--row .button[href$="/import"],
+.pagehead__actions .button[href$="/import"] {
   --icon: var(--i-upload);
 }
 

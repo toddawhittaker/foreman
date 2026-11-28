@@ -41,9 +41,26 @@
     });
   }
 
+  // A toast built from a result parameter in the address names it in
+  // data-drop; once shown, the parameter leaves the address, keeping every
+  // other one and the hash, so a reload or Back does not show it again.
+  function drop(toast) {
+    const names = (toast.getAttribute("data-drop") || "").split(/\s+/).filter(Boolean);
+    if (!names.length) return;
+    const url = new URL(window.location.href);
+    let changed = false;
+    for (const n of names) {
+      if (!url.searchParams.has(n)) continue;
+      url.searchParams.delete(n);
+      changed = true;
+    }
+    if (changed) history.replaceState(history.state, "", url.pathname + url.search + url.hash);
+  }
+
   function arm(toast) {
     if (toast.hasAttribute("data-armed")) return;
     toast.setAttribute("data-armed", "");
+    drop(toast);
     const button = toast.querySelector("[data-toast-close]");
     if (button) button.addEventListener("click", () => close(toast));
     const words = toast.querySelector(".toast__text");

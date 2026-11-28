@@ -16,7 +16,7 @@ test("archive from the world page, find it in the foldout, then unarchive", { ta
   await checkPage(page);
 
   await page.getByRole("button", { name: "Archive world", exact: true }).click();
-  await expect(page).toHaveURL("/worlds/second?archived=on");
+  await expect(page).toHaveURL(/\/worlds\/second(\?archived=on)?$/);
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Second");
   await expect(page.locator("h1 .badge")).toHaveText("Archived");
   await expect(page.locator("#toasts .toast--success")).toContainText("Second is archived.");
@@ -40,7 +40,7 @@ test("archive from the world page, find it in the foldout, then unarchive", { ta
   await expect(page).toHaveURL("/worlds/second");
 
   await page.getByRole("button", { name: "Unarchive world" }).click();
-  await expect(page).toHaveURL("/worlds/second?archived=off");
+  await expect(page).toHaveURL(/\/worlds\/second(\?archived=off)?$/);
   await expect(page.locator("#toasts .toast--success")).toContainText("Second is unarchived.");
   await expect(page.locator("h1 .badge")).toHaveCount(0);
   await expect(page.locator("#act-switch")).toBeVisible();
@@ -74,7 +74,7 @@ test("a switch to an archived world is refused with its reason", async ({ page, 
 
   await page.goto("/worlds/second");
   await page.getByRole("button", { name: "Archive world", exact: true }).click();
-  await expect(page).toHaveURL("/worlds/second?archived=on");
+  await expect(page).toHaveURL(/\/worlds\/second(\?archived=on)?$/);
 
   await page.goto("/worlds/second/switch");
   await expect(page.locator(".message--error")).toContainText("This world is archived, so it cannot start. Unarchive it first.");

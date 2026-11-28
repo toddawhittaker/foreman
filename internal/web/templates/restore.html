@@ -1,19 +1,19 @@
 {{define "title"}}{{if .Page.ModUndo}}{{t "server.restore.mods.title" "world" .Page.WorldName}}{{else}}{{t "server.restore.title" "world" .Page.WorldName}}{{end}}{{end}}
 
-{{define "head-title"}}{{with .Page}}{{if .ModUndo}}{{t "server.restore.mods.heading" "world" .WorldName}}{{else}}{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}{{end}}{{end}}{{end}}
+{{define "head-title"}}<span id="confirm-heading">{{with .Page}}{{if .ModUndo}}{{t "server.restore.mods.heading" "world" .WorldName}}{{else}}{{tHTML "server.restore.heading" "label" (snapLabel .Snapshot) "time" (momentUTC .Snapshot.TakenAt)}}{{end}}{{end}}</span>{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{template "pagehead" $}}
 {{template "summary" .Problems}}
-{{- /* The error is a toast; the undo snapshot a failed restore left is the next step, so it stays here (SPEC 6.5). */}}
+{{- /* The error is a toast; the undo snapshot a failed restore left is the next step, so it stays here (SPEC 6.5), and says first that the restore failed, since the toast leaves. */}}
 {{- if and (not .Error.IsZero) .Undo}}
 <div class="message message--warning" id="restore-undo">
-  <p><strong>{{t "common.label.warning"}}</strong> {{t "server.failure.undo_text" "label" (m "worlds.snapshot.label.before_restore")}}</p>
+  <p><strong>{{t "common.label.warning"}}</strong> {{t "worlds.restore.failed"}} {{t "server.failure.undo_text" "label" (m "worlds.snapshot.label.before_restore")}}</p>
   <div class="actions"><a href="{{.UndoPath}}">{{t "server.restore.undo_link" "label" (m "worlds.snapshot.label.before_restore")}}</a></div>
 </div>
 {{- end}}
-<section class="confirm">
+<section class="confirm" aria-labelledby="confirm-heading">
   {{- /* What undo does to the mods comes first, in the admin's words; the steps that do it follow (SPEC 17.5). */}}
   {{- with .ModUndo}}
   <p>{{tHTML "server.restore.mods.lead" "label" (snapLabel $.Page.Snapshot) "time" (momentUTC $.Page.Snapshot.TakenAt)}}</p>

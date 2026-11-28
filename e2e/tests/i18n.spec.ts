@@ -440,7 +440,7 @@ async function setUpMatrix(page: Page, foreman: Foreman, fakeGame: FakeGame): Pr
   await page.goto("/worlds/third/delete");
   await page.getByLabel("Type the world's name to confirm").fill("Third world with a rather long name for a table caption");
   await page.getByRole("button", { name: "Delete world" }).click();
-  await expect(page).toHaveURL("/worlds?deleted=third");
+  await expect(page).toHaveURL(/\/worlds(\?deleted=third)?$/);
 
   await page.goto("/");
   await page.getByRole("button", { name: "Start server" }).click();

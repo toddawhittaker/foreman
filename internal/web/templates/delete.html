@@ -1,6 +1,6 @@
 {{define "title"}}{{t "worlds.delete.title" "world" .Page.World.Name}}{{end}}
 
-{{define "head-title"}}{{with .Page}}{{if .Refusal.IsZero}}{{t "worlds.delete.question" "world" .World.Name}}{{else}}{{t "worlds.delete.title" "world" .World.Name}}{{end}}{{end}}{{end}}
+{{define "head-title"}}<span id="confirm-heading">{{with .Page}}{{if .Refusal.IsZero}}{{t "worlds.delete.question" "world" .World.Name}}{{else}}{{t "worlds.delete.title" "world" .World.Name}}{{end}}{{end}}</span>{{end}}
 {{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
@@ -12,7 +12,7 @@
 <p>{{msg $refusal}}</p>
 <div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>
 {{- else}}
-<section class="confirm">
+<section class="confirm" aria-labelledby="confirm-heading">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li>{{if .World.SizeUnknown}}{{tHTML "worlds.delete.folder_unknown" "folder" (code (printf "worlds/%s" .World.ID))}}{{else}}{{tHTML "worlds.delete.folder" "folder" (code (printf "worlds/%s" .World.ID)) "size" (bytes .World.DiskBytes)}}{{end}}</li>
