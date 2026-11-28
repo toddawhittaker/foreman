@@ -1,9 +1,11 @@
 {{define "title"}}{{t "about.title"}}{{end}}
 
 {{/* DESIGN 6, "User menu". The same content the user menu's About dialog shows. */}}
+{{define "head-title"}}<span class="about__heading">{{template "about-logo"}}{{t "about.heading"}}</span>{{end}}
+
 {{define "content" -}}
+{{template "pagehead" .}}
 {{with .Page}}
-<h1 class="about__heading">{{template "about-logo"}}{{t "about.heading"}}</h1>
 {{template "about-details" .Info}}
 {{end}}
 {{- end}}

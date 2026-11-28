@@ -56,7 +56,7 @@ test("a save stores every value and the page shows them again", async ({ page })
   await modLimit(page).fill("300");
   await page.getByRole("button", { name: "Save settings" }).click();
   await expect(page).toHaveURL("/settings/general?done=saved");
-  await expect(page.locator("#done-message")).toContainText("Saved. The new settings apply from now on.");
+  await expect(page.locator("#toasts .toast--success")).toContainText("Saved. The new settings apply from now on.");
   await checkPage(page);
   await page.goto("/settings/general");
   await expect(retention(page)).toHaveValue("5");
@@ -130,8 +130,8 @@ test("confirming saves every value and deletes nothing yet", { tag: "@looks" }, 
   await page.getByRole("button", { name: "Save settings" }).click();
   await page.locator("section.confirm").getByRole("button", { name: "Save settings" }).click();
   await expect(page).toHaveURL("/settings/general?done=saved");
-  // The count is in the Saved box, which takes focus after the save.
-  const trim = page.locator("#done-message #general-trim");
+  // The count sums up the save, so it is in the Saved toast.
+  const trim = page.locator("#toasts .toast--success");
   await expect(trim).toContainText("3 automatic snapshots will be removed");
   await expect(retention(page)).toHaveValue("1");
   await expect(modLimit(page)).toHaveValue("300");
@@ -141,7 +141,7 @@ test("confirming saves every value and deletes nothing yet", { tag: "@looks" }, 
   // Raising it again leaves nothing to remove, and saves in one click.
   await retention(page).fill("10");
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page.locator("#done-message")).toBeVisible();
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
   await expect(page.locator("#general-trim")).toHaveCount(0);
 });
 

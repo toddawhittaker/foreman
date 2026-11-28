@@ -242,10 +242,8 @@ const rowPages: [string, string][] = [
 ];
 
 for (const width of [1920, 390]) {
-  // On a phone the audit log lays each row out as a record of its own, whose
-  // cells drop their padding (pages/settings.css); it is left out of the
-  // phone run until that page adopts the row padding.
-  const phoneOwnLayout = ["/settings/audit-log"];
+  // Every page lays its rows out with the shared even padding at both widths.
+  const phoneOwnLayout: string[] = [];
   const pages = width === 1920 ? rowPages : rowPages.filter(([path]) => !phoneOwnLayout.includes(path));
   test.describe(`at ${width} px`, () => {
     test.use({ viewport: { width, height: 1000 } });

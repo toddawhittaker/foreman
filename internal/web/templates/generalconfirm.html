@@ -1,11 +1,12 @@
 {{define "title"}}{{t "general.confirm.question"}}{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "general-confirm"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs "" (t "common.nav.settings") generalPath (t "common.menu.general"))}}{{end}}
+{{define "head-title"}}{{t "general.confirm.question"}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "general-confirm"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-<h1 id="confirm-heading">{{t "general.confirm.question"}}</h1>
-{{template "rail" $}}
 <section class="confirm">
   <p>{{t "common.confirm.will"}}</p>
   <ul>

@@ -32,7 +32,7 @@ test("a new schedule is offered at 04:00 UTC and saves", async ({ page }) => {
 
   await page.getByRole("button", { name: "Save schedule" }).click();
   await expect(page).toHaveURL("/settings/restart-schedule?done=saved");
-  await expect(page.locator("#done-message")).toContainText("Saved. The next restart is");
+  await expect(page.locator("#toasts .toast--success")).toContainText("Saved. The next restart is");
   await expect(page.locator("#schedule-state")).toContainText("Foreman restarts the active world every day at 04:00 (UTC). Next restart:");
   await expect(page.locator("#schedule-state time")).toHaveAttribute("datetime", /T04:00:00Z$/);
   await checkPage(page);
@@ -52,7 +52,7 @@ test("change the time, zone and limit, then turn it off", async ({ page }) => {
   // Turning it off keeps the fields, so turning it on again is one tick.
   await page.getByLabel("Restart the active world every day").uncheck();
   await page.getByRole("button", { name: "Save schedule" }).click();
-  await expect(page.locator("#done-message")).toContainText("Saved. No restart is scheduled.");
+  await expect(page.locator("#toasts .toast--success")).toContainText("Saved. No restart is scheduled.");
   await expect(page.locator("#schedule-state")).toHaveText("No restart is scheduled.");
   await expect(page.getByLabel("Restart the active world every day")).not.toBeChecked();
   await expect(page.getByLabel("Time", { exact: true })).toHaveValue("02:30");
@@ -98,8 +98,8 @@ test("the Foreman settings pages share one sub-navigation", async ({ page }) => 
     await expect(nav.getByRole("link")).toHaveText(["General", "Restart schedule", "Notifications", "Public mods", "API tokens", "Users", "Audit log", "factorio.com account"]);
     await expect(nav.getByRole("link", { name: current })).toHaveAttribute("aria-current", "page");
     await expect(nav.locator("[aria-current]")).toHaveCount(1);
-    // It sits under the page's heading, or under the page head that holds the heading and its action (DESIGN 8.1).
-    await expect(page.locator("main > :is(h1, header.page-head:has(> h1)) + nav.subnav")).toHaveCount(1);
+    // It ends the page header, under the heading and its buttons (DESIGN 6, "The page header").
+    await expect(page.locator("main > header.pagehead > h1 ~ nav.subnav:last-child")).toHaveCount(1);
   }
   // Moving between them is one click.
   await settingsNav(page).getByRole("link", { name: "Restart schedule" }).click();
