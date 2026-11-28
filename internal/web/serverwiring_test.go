@@ -90,16 +90,16 @@ func TestSnapshotAfterCancelNeverShowsTheCancelledMessage(t *testing.T) {
 }
 
 // DESIGN 6, "Toasts": the Done message is a toast, which never takes focus,
-// after the admin's own action or on a plain load.
+// and shows once: the loads after the one that showed it have none.
 func TestDoneIsAToastThatTakesNoFocus(t *testing.T) {
 	g := newGameRig(t, image21)
 	g.newWorld("Base", fixtureNoSA, false)
 	g.wantRedirectTo(PathServerResult, g.post(gamePath("base", "take-snapshot"), url.Values{}))
-	g.waitPage("Foreman took the snapshot")
+	body := g.waitPage("Foreman took the snapshot")
+	g.wantContains("the first load", body, `<div class="toast toast--success" data-toast data-toast-key="done.`)
+	g.wantMissing("the first load", body, "autofocus", "data-focus-result", "done-message")
 	for _, path := range []string{PathServerResult, PathServer} {
-		body := g.get(path)
-		g.wantContains(path, body, `<div class="toast toast--success" data-toast>`, "Foreman took the snapshot")
-		g.wantMissing(path, body, "autofocus", "data-focus-result", "done-message")
+		g.wantMissing(path, g.get(path), "data-toast", "Foreman took the snapshot")
 	}
 }
 

@@ -106,6 +106,8 @@
   // new row with the same id, so an update to the list does not close the
   // row in the admin's hands. A player who left takes their row with them;
   // focus then goes to the players heading (DESIGN 8.12).
+  // The keys of the result toasts this page has shown, from its load on.
+  const shownToasts = new Set(Array.from(document.querySelectorAll("[data-toast-key]"), (t) => t.getAttribute("data-toast-key")));
   let held = null;
   let heldFocus = "";
   let openRows = [];
@@ -119,13 +121,20 @@
       return;
     }
     // A result's toasts go first in #toasts, as htmx's out-of-band swap
-    // puts them, and toast.js reads each out (DESIGN 6, "Toasts").
+    // puts them, and toast.js reads each out (DESIGN 6, "Toasts"). A toast
+    // this page has shown, closed or not, never comes back.
     if (e.target.getAttribute("sse-swap") === "toast") {
       e.preventDefault();
       const region = document.getElementById("toasts");
       const answer = document.createElement("template");
       answer.innerHTML = e.detail.data;
-      if (region) for (const t of answer.content.querySelectorAll("[hx-swap-oob] > [data-toast]")) region.prepend(document.importNode(t, true));
+      if (!region) return;
+      for (const t of answer.content.querySelectorAll("[hx-swap-oob] > [data-toast]")) {
+        const key = t.getAttribute("data-toast-key");
+        if (key && shownToasts.has(key)) continue;
+        if (key) shownToasts.add(key);
+        region.prepend(document.importNode(t, true));
+      }
       return;
     }
     // The strip's update swaps only out of band; nothing on the page moves.
@@ -147,6 +156,21 @@
     if (e.target.contains(document.activeElement)) return;
     const heading = e.target.getAttribute("sse-swap") === "players" ? "players-heading" : "control-heading";
     document.getElementById(heading)?.focus();
+  });
+
+  // A live update can hide the control that has focus without replacing it:
+  // on Chat, the form goes while the game is not running. Focus then goes to
+  // the page's heading, which says the game stopped, not to the top of the
+  // page (DESIGN 5, 8.14).
+  let focusBefore = null;
+  document.addEventListener("htmx:sseBeforeMessage", () => {
+    focusBefore = document.activeElement;
+  });
+  document.addEventListener("htmx:sseMessage", () => {
+    const was = focusBefore;
+    focusBefore = null;
+    if (!was || was === document.body || !was.isConnected || was.checkVisibility()) return;
+    document.getElementById("control-heading")?.focus();
   });
 
   // Closing the Undo row posts without a reload (the form works without

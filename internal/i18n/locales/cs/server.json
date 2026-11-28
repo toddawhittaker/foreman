@@ -271,6 +271,7 @@
   "server.done.restore_short": "Svět je obnoven.",
   "server.done.switch_short": "Světy jsou přepnuty.",
   "server.done.close": "Zavřít tuto zprávu",
+  "server.done.dismiss_undo": "Zavřít nabídku vrácení zpět",
   "server.done.update_short": "Verze hry je aktualizována.",
   "server.done.mods_short": "Mody byly změněny.",
   "server.done.rollback_short": "Svět byl vrácen zpět.",

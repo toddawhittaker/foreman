@@ -44,6 +44,14 @@ type ServerPage struct {
 	HaveResult bool
 	// Others are the actions asked for while it ran, shown apart.
 	Others []actionResult
+	// Toasted marks the result toasts a page has shown, by key, which a page
+	// drawn later leaves out (DESIGN 6, "Toasts").
+	Toasted map[string]toastMark
+	// ToastSeq names this page load (gameRuns.pageToasts): a toast marked
+	// later by another page was not shown here, so this page's stream sends it.
+	ToastSeq uint64
+	// LiveToasts are the result toasts a live update brings, new to its page.
+	LiveToasts []Toast
 	// WorldNames holds the names of the worlds a switch, or the notice of
 	// an unfinished one, speaks of, by id.
 	WorldNames map[string]string
@@ -104,14 +112,14 @@ func (p ServerPage) liveURL() string {
 		return ""
 	}
 	// The stream reloads the mods notice once an operation the page has not
-	// seen ends (SPEC 9.3), and sends only the result toasts the page has not
-	// shown (DESIGN 6).
+	// seen ends (SPEC 9.3), and sends the result toasts it has not shown
+	// (DESIGN 6).
 	q := url.Values{}
 	if o := p.Status.Operation; o != nil && o.Done {
 		q.Set(doneOpParam, strconv.FormatUint(o.ID, 10))
 	}
-	if m := p.toastMark(); m != "" {
-		q.Set(toastsParam, m)
+	if p.ToastSeq > 0 {
+		q.Set(toastSeqParam, strconv.FormatUint(p.ToastSeq, 10))
 	}
 	if len(q) == 0 {
 		return gamePath(p.World.ID, "events")
@@ -336,8 +344,14 @@ func (p ServerPage) OffersDownload() bool {
 // Downloaded confirms a download that worked, while the world waits to
 // start, or is zero.
 func (p ServerPage) Downloaded() i18n.Msg {
+	m, _ := p.downloaded()
+	return m
+}
+
+// downloaded is Downloaded and when that download ended.
+func (p ServerPage) downloaded() (i18n.Msg, time.Time) {
 	if !p.CanStart() || p.ImageMissing || p.Image == "" {
-		return i18n.Msg{}
+		return i18n.Msg{}, time.Time{}
 	}
 	results := p.Others
 	if p.HaveResult {
@@ -345,10 +359,10 @@ func (p ServerPage) Downloaded() i18n.Msg {
 	}
 	for _, res := range results {
 		if res.Action == game.AuditImageDownload && res.Err == nil {
-			return i18n.M("server.image.downloaded", "image", p.Image, "world", p.World.Name)
+			return i18n.M("server.image.downloaded", "image", p.Image, "world", p.World.Name), res.At
 		}
 	}
-	return i18n.Msg{}
+	return i18n.Msg{}, time.Time{}
 }
 
 // switchRefused reports whether the last result is a switch that ended

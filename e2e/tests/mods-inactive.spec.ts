@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, seedSecond, live, version20 } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, seedSecond, live, version20, doneBox } from "./foreman.js";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 
@@ -44,5 +44,5 @@ test("the active world's change still reports on the Server page", { tag: "@look
   await page.goto("/worlds/base/mods/plan?kind=install&name=fp-here");
   await page.getByRole("button", { name: "Install 1 mod" }).click();
   await expect(page).toHaveURL("/");
-  await expect(page.locator(".message--success").filter({ hasText: "Done:" })).toContainText("Installed fp-here in Base.", live);
+  await expect(doneBox(page)).toContainText("Installed fp-here in Base.", live);
 });

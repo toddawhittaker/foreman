@@ -29,4 +29,30 @@ test.describe("with the fake game", () => {
       await checkPage(page);
     });
   }
+
+  // DESIGN 6, "Toasts": the Done toast shows once. A reload after it showed,
+  // and a reconnect of the live stream, bring no toast back, while the Undo
+  // row stays until it is closed.
+  test("a reload after the Done toast shows no toast but keeps the Undo row", async ({ page, foreman, fakeGame }) => {
+    await createAdmin(page);
+    seedWorld(foreman);
+    seedSecond(foreman);
+    await fakeGame!.call("/image", { ref: image21, on: true });
+    await page.goto("/worlds/second");
+    await page.locator("#act-switch").click();
+    await page.locator("section.confirm button[type=submit]").first().click();
+    await expect(stateBadge(page)).toHaveClass(/state--running/, live);
+    await expect(page.locator("#toasts .toast--success")).toHaveCount(1, live);
+    await expect(page.locator("#result-undo")).toBeVisible();
+
+    await page.reload();
+    await expect(stateBadge(page)).toHaveClass(/state--running/, live);
+    await expect(page.locator("#result-undo")).toBeVisible();
+    // Long enough for the live stream to open and send its first update.
+    await page.waitForTimeout(1_500);
+    await expect(page.locator("#toasts [data-toast]")).toHaveCount(0);
+    await page.reload();
+    await expect(page.locator("#result-undo")).toBeVisible();
+    await expect(page.locator("#toasts [data-toast]")).toHaveCount(0);
+  });
 });
