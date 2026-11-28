@@ -24,7 +24,7 @@ checking Epic 11a on the trial deployment) is done, and so are fixes batches 14,
 batch 17 (the Epic 12 test-drive findings) is done. Fixes batch 18 (mod icons
 from the world's zips, and the star map) is done too and closes the gap
 that Fixes batch 17 left for mod icons. Fixes batch 19 (spots of fluid tiles
-in the resource count) is done.
+in the resource count) is done, and so is fixes batch 20 (UI consistency).
 Gate A (SPEC 19.1) passed on 2026-11-05. Gate B (SPEC 19.2) was skipped for
 now, at Todd's choice, when the Mod settings epic started; it is still owed
 before Gate C.
@@ -5408,3 +5408,157 @@ Age resource tests (`make test-game-resources`) on 1.1.110, 2.0.77 and
 - **A fluid is named by its control's label,** since the catalogue holds no
   fluid names. Two fluids with the same name each add their own in brackets.
 - **The summary's patch count includes spots.**
+
+## Fixes batch 20 (UI consistency)
+
+Serves SPEC 5.6, 8.15, 9.3, 17.9, 17.11, 17.18 and the new 17.21 to 17.23,
+with DESIGN 6, 7, 8 and 11, ADR 0038 and docs/WORKFLOW.md "Where CSS goes".
+It covers 27 issues: #962 to #966 and #970 to #991, most from Todd's hand
+test of #969 and a three-machine UI sweep. The plan was #992. The task pull
+requests were #993 to #1022.
+
+### Delivered
+
+- **The rulings (Todd, 2026-11-27).** Nothing moves because of a change
+  elsewhere on the page; one thing has one look, one place and one size;
+  one page width; the light theme is light; results are toasts; phone page
+  buttons go below the tab row; empty states are centred; one working bar
+  drawn in CSS; table rows are padded inside the highlight. Each fix is
+  proven by layout tests that check x and y at 0 px, and `scrollY`.
+- **CSS in parts and layers (#983, ADR 0038; A, #999, #1000).**
+  `foreman.css` is 15 parts under `static/css/` in `@layer tokens, base,
+  components, pages`, joined by Go at startup and served as one file.
+  Overrides were folded (374 dead declarations, 139 rules) and false
+  comments fixed, with identical pixels in 106 captures. A guard in `make
+  verify` fails on conflicting rules (shorthands too), raw sizes where a
+  token exists, undeclared layers and unlisted parts.
+- **Where CSS goes (#1017; Q, #1022).** WORKFLOW "Where CSS goes" says a
+  component's look changes in its shared part only, and
+  `TestPagePartsDoNotRestyleSharedComponents` stops new page restyles. The
+  236 that already exist are listed for #1017.
+- **The shell (#979, #978, #963, #984; F1, #1004).** The top bar, the
+  account menu and the Console and Chat logs follow the theme. Every page
+  is one width, `--page-max`. One page-header partial (`pagehead.html`)
+  gives every page its crumb, title, buttons and tab row or step bar in
+  fixed places, the error and gate pages too. A signed-in 404 keeps the
+  shell, and the account menu button no longer moves on scroll.
+- **Toasts (#985; F1, F1b, K, P1 to P5 and their review fixes, R1).**
+  Results float over the page, stack newest on top without moving the
+  others, never take focus or cover the focused control, and Escape
+  closes the newest. A success is read politely and stays at least 6 s,
+  pausing on hover and focus; an error is read once as an alert and stays
+  until closed. A result shows once: a toast from an address parameter
+  drops it (`Toast.Drop`, P3b, #1016), and the Server page keeps a key for
+  each toast it has shown (P1b, #1015). Times in a toast print in local
+  time. Without script the toasts keep their room at the end of `main`.
+  Every area's result messages, and Console and Chat refusals, are toasts.
+  The cancel's toast shows after Cancel stop even when the old page's
+  stream sent it first (#1020).
+- **Shared components (#976, #980, #982, #987 to #990; F2, #1002, #1005).**
+  One working bar drawn in CSS, the same in every browser and a full muted
+  bar under reduced motion; one empty state, centred in its plate; one
+  form foot; two button sizes; the plate band on every plate title; one
+  field gap, hint place and message look; every checkbox and radio drawn,
+  the mixed one too. Table rows are padded inside the highlight, the
+  table pulled out by the same amount.
+- **`/design` in step (#983; G, #1003, G2, #1007).** The component page
+  shows the real partials and classes, and an e2e spec holds each
+  specimen to the real page's box and styles in both themes at 1280, 768
+  and 320 px.
+- **Server area (P1, #1010, P1b, #1015, R1).** The plate's buttons keep
+  one place in every state. Nothing in a players row, the Console's find
+  bar or the Chat form moves. Chat while stopped shows only "not
+  running". Stop and Restart use the confirm box. On a phone the Console
+  count shares the Follow newest row, so the log starts above the command
+  bar (#986).
+- **Settings area (#962, #981; P2, #1013, P2b, #1018).** The Audit log
+  fits at every width. The tab row stays put on tabs with a button beside
+  the title. Settings use the page header, toasts, form foot and empty
+  state.
+- **Worlds and snapshots (#991; P3, #1012, P3b, #1016, R2, #1021).**
+  Restore keeps the area it was opened from, the selection bar keeps its
+  room, Snapshot and Saves rows are padded inside the highlight, and the
+  factory map's Draw keeps its place. Confirmation pages have a plain `h1`
+  question, and the box carries no landmark name of its own.
+- **Generate and preview (#966, #973 to #975, #977; P4, #1014, P4b,
+  #1019).** The preview map keeps its size, and Preview map, Show resource
+  amounts, the territories box and a redraw line move nothing. The
+  picture's Download line keeps its room. All four steps share the page
+  header, step 2 included. The star map's Previous mirrors Next at the
+  frame's edge, and its labels fit wide letters on the server, in the
+  downloaded file too. One resource row design is shared by Map settings
+  and the large view. Step 4's and Mod settings' notes are toasts.
+- **Mods and the plan (#970, #971, #972; B, #993, #998, P5, #1009, P5b,
+  #1011).** Plan offers fit the world: a release on the world's line within
+  the parent's limit and no declared conflict. A mod already in the plan
+  is never offered, nor one offered twice, and ticking never hides an offer
+  through its dependencies. A tick never moves a box or scrolls the page.
+  The late type-ahead search no longer undoes a page change, and a failed
+  search is sent again when retyped.
+- **Console (#964; C, #994).** A reply of only blank lines, as `/time`
+  sends on a fresh map, shows as "The game sent no reply." The suspected
+  race was ruled out: RCON is serialised and matched by packet id.
+- **Planets read (#965; D, #995, #997).** A read that crashes in a mod
+  names the mod and offers its removal, on the page load and the preview
+  post. A failed read is kept only for a real game failure, until the
+  world's mods change.
+- **`make test-pkgs` (#996)** runs named packages' race tests through the
+  shared queue, without coverage.
+
+Verified: each task with a failing test first, its unit tests and the e2e
+specs for the pages it touched, under the load gate; the layout tests at
+0 px in x and y at 1920 and 390 px in both themes; reviews by the code,
+accessibility, design and security reviewers, with findings fixed or
+listed below; the real-game checks for B and D. The full checks on the
+fold head are in the epic pull request.
+
+### Gaps left
+
+- **Done messages with Undo or Next stay in the page,** because a toast
+  has no action slot: a world's game settings Done and Undo, the Mods tab's
+  Done with Undo or Next, the Snapshots tick note (which takes focus, as
+  SPEC asks) and the world page's "set up" box in the Generate flow.
+- **Not every toast is shown once yet.** The Settings toasts and the
+  guided Mods step's "world is made" toast are not on `Toast.Drop`, so a
+  reload shows them again.
+- **A reload after a toast's parameters are dropped loses the one-time
+  in-page offers** that came with it, such as a link to the snapshot it
+  named.
+- **A no-JS settings result shows no toast.**
+- **A toast that appears under a still pointer does not pause** until the
+  pointer moves.
+- **The rename scroll check is a `test.fixme`** (`worlds-steady.spec.ts:119`).
+  A rename posts and redirects, so the page reloads at the top.
+- **The large view's wait line ellipsizes.** It is `aria-hidden`, so no
+  words are lost to a screen reader.
+- **The large view's status repeats the planet name,** because SPEC 17.15
+  pins its words.
+- **On a phone, the factorio.com account sentence wraps** to a second line
+  and moves the plate below it.
+- **The #966 star map e2e cannot make a label overflow** with the fake
+  game, so `TestStarMapFitsAWideLabelAtTheEdge` carries the check.
+- **Planets read (D):** in a thrown message the library path comes first;
+  an earlier non-fatal Error line hides the crash line; the mod is matched
+  by its localised title only as a fallback; the no-script preview page
+  does not name the mod.
+- **A Mods plan version change can still move the offers above it**
+  (#1024). The phone plan bar scrolls focus clear on the first pick, and
+  `.hit__busy` stays text.
+- **A misfit's deeper dependencies** (past its own direct ones) are not
+  checked until it is ticked (B).
+- **CSS:** 236 page restyles of shared components are allowlisted for
+  #1017; 108 off-scale lengths no token names are not caught; dead shared
+  rules remain (`.message--closable`, `.message__dismiss`, `.steps
+  progress`, `.page-head--plate`); `/design` keeps the copies listed in
+  `design.html` and the h2 title mirror in `pages/design.css`.
+- **The `form-foot` partial has no Back or second button,** so Generate's
+  steps 3 and 4, the game-settings foot bar and Replace account write the
+  bar out by hand. The page-header partial has no heading-level parameter
+  (`pagehead-h2` is the second partial).
+- **Smaller ones:** play time stays unknown until a fresh map has run a
+  second (C); /worlds lost its Generate and Import icons; the Console and
+  Chat refusals lost their "Go to the Server page" link (the tabs remain);
+  a Server-page snapshot draws no working state of its own; General's
+  trim sentence sits in the Snapshots tile; the Audit log's detail column
+  floor fell from 15rem to 10rem; the confirm pages keep a bare-link
+  Cancel.
