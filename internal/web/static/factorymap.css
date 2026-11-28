@@ -305,7 +305,7 @@
 
   /* Draw keeps the top row across both columns, so it stands where it
      stood before the first drawing; the map and its controls start below
-     it (ruling 1). */
+     it (DESIGN 8.22). */
   .factorymap-page:has(.factorymap__view) > .factorymap > .factorymap__draw {
     grid-column: 1 / -1;
     grid-row: 1;

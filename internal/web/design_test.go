@@ -81,8 +81,8 @@ func testDesignPage() DesignPage {
 	return p
 }
 
-// The components are drawn as the app's pages draw them (docs/EPIC-fixes-20.md,
-// ruling 2): the shared partials render, the Server page's structure is
+// The components are drawn as the app's pages draw them (DESIGN 7):
+// the shared partials render, the Server page's structure is
 // there so the page's rules for it apply, and no class is a copy that no real
 // page uses.
 func TestDesignPageDrawsTheComponentsAsThePagesDo(t *testing.T) {
@@ -107,8 +107,10 @@ func TestDesignPageDrawsTheComponentsAsThePagesDo(t *testing.T) {
 	known := realClasses(t)
 	for _, c := range known.missing(body) {
 		// working--idle is the state a page's script gives the working bar to
-		// hide it and keep its room; no page adopts the bar yet.
-		if strings.HasPrefix(c, "status-card--") || c == "working--idle" {
+		// hide it and keep its room; no page adopts the bar yet. nav-lamp is
+		// the real tab's #nav-lamp, which the two panes cannot both carry as
+		// an id, and the stylesheet styles it by either.
+		if strings.HasPrefix(c, "status-card--") || c == "working--idle" || c == "nav-lamp" {
 			continue
 		}
 		t.Errorf("class %q is on the component page but on no real page", c)
@@ -129,6 +131,11 @@ func TestDesignClassCheckComparesWholeNames(t *testing.T) {
 		if _, ok := known.exact[name]; !ok {
 			t.Errorf("%q should be a real class", name)
 		}
+	}
+	// A Go literal that is an id or a template name, not a class, makes no
+	// class real.
+	if _, ok := known.exact["nav-lamp"]; ok {
+		t.Error(`"nav-lamp" is an id and a template name in Go, not a class`)
 	}
 	// A stale name that only starts like a real one is still stale.
 	if got := known.missing(`<p class="tab-old button--primaryx">`); len(got) != 2 {
@@ -154,6 +161,9 @@ var (
 	// Any other action prints something, so a name it touches is built.
 	printAction = regexp.MustCompile(`\{\{.*?\}\}`)
 	goString    = regexp.MustCompile("`[^`]*`|\"(?:[^\"\\\\\n]|\\\\.)*\"")
+	// A Go literal that reads as one class: a BEM modifier or element, or a
+	// prefix that ends in a dash.
+	goClass = regexp.MustCompile(`^[a-z][a-z0-9-]*(?:--|__)[a-z0-9-]*$|^[a-z][a-z0-9-]*-$`)
 )
 
 // add records the names in one class attribute's value.
@@ -210,10 +220,15 @@ func realClasses(t *testing.T) classSet {
 			for _, m := range classAttr.FindAllStringSubmatch(lit, -1) {
 				c.add(m[1])
 			}
-			for _, w := range strings.Fields(lit) {
-				c.exact[w] = struct{}{}
-				if strings.HasSuffix(w, "-") {
-					c.prefixes = append(c.prefixes, w)
+			// Elsewhere a literal is a class only when it is one class-like
+			// name with a BEM part (badge--active, step-state--) or ends in
+			// a dash for a name joined to it, so an id, a template name or
+			// a word in a sentence is not taken for a class.
+			if goClass.MatchString(lit) {
+				if strings.HasSuffix(lit, "-") {
+					c.prefixes = append(c.prefixes, lit)
+				} else {
+					c.exact[lit] = struct{}{}
 				}
 			}
 		}

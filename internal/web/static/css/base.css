@@ -141,8 +141,10 @@ h3 {
 }
 
 /* Page title 30/36, 26/32 on a phone. The title of a page in main takes
-   its size from main h1. */
-h1 {
+   its size from main h1. A page header whose heading is an h2, as on
+   /design's specimens, takes the title's look too. */
+h1,
+.pagehead > h2 {
   font-size: var(--text-3xl);
   font-weight: 700;
   line-height: 1.2;
@@ -153,7 +155,8 @@ h1 {
 }
 
 @media (max-width: 39.99rem) {
-  h1 {
+  h1,
+  .pagehead > h2 {
     font-size: 1.625rem;
     line-height: 1.23;
   }
@@ -345,7 +348,8 @@ legend {
   display: none;
 }
 
-main h1 {
+main h1,
+main .pagehead > h2 {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
@@ -609,7 +613,8 @@ main thead th {
    4 px over a 28 px title, a 40 px tab row, and the first plate 16 px
    under the tabs, so content starts about 190 px from the top. */
 @media (min-width: 40rem) {
-  main h1 {
+  main h1,
+  main .pagehead > h2 {
     font-size: 1.75rem;
     line-height: 1.25;
   }

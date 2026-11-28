@@ -53,7 +53,9 @@ async function turnOn(page: Page) {
   await page.goto("/settings/general");
   await page.getByLabel(wikiLabel).check();
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL("/settings/general?done=saved");
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL("/settings/general");
 }
 
 const icons = (page: Page) => page.locator("#mod-settings-form form img.rt-obj-icon");

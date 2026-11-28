@@ -422,7 +422,7 @@ func TestSnapshotFromServerPage(t *testing.T) {
 	g := newGameRig(t, image21)
 	id := g.newWorld("Base", fixtureNoSA, false)
 	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "take-snapshot"), url.Values{}))
-	g.waitPage(`<span data-toast-text>Foreman took the snapshot &#34;Manual snapshot&#34; of Base.</span>`)
+	g.waitPage(`<span data-toast-text>Foreman took the snapshot &#34;Manual snapshot&#34; of Base. Finished at <time datetime=`)
 	snaps, err := g.worlds.Snapshots(id)
 	if err != nil || len(snaps) != 1 || snaps[0].Label != defaultLabel {
 		t.Errorf("snapshots %+v, %v", snaps, err)
@@ -520,4 +520,23 @@ func TestLoadsNextFact(t *testing.T) {
 		p.Status.Operation = &game.Operation{Action: game.AuditSwitch, Switch: &game.SwitchInfo{From: "base", To: "bravo", Presented: true}}
 	})
 	wantNone(t, "after a switch", fragmentHTML(t, p, "server-loads"), "Loads next", "old.zip")
+}
+
+// SPEC 17.11, DESIGN 6 "Toasts": the Done toast says when the action
+// finished, as a <time> element, so time.js shows it in the browser's zone.
+func TestDoneToastSaysWhenItFinished(t *testing.T) {
+	p := serverCase(game.StateRunning, func(p *ServerPage) {
+		p.Result, p.HaveResult = actionResult{Action: actionSnapshot, Taken: defaultLabel, At: msgT0}, true
+	})
+	ts := p.ResultToasts()
+	if len(ts) != 1 || ts[0].Error {
+		t.Fatalf("toasts %+v, want one Done", ts)
+	}
+	if got := english(ts[0].Text); !strings.HasSuffix(got, " Finished at 2026-11-04 10:00 UTC.") {
+		t.Errorf("Done toast %q does not end with the time", got)
+	}
+	region := toastRegion(pageHTML(t, p))
+	if !strings.Contains(region, ` Finished at <time datetime="2026-11-04T10:00:00Z">`) {
+		t.Errorf("no time element in %q", region)
+	}
 }

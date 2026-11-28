@@ -245,7 +245,7 @@ test("choosing a release moves nothing in its row", async ({ page, foreman, fake
 
 // The review after Generate from a favorite says the world was made once:
 // the address drops the mark after the first draw, so a reload or Back
-// does not say it again (SPEC 5.12, EPIC-fixes-20 ruling 6).
+// does not say it again (SPEC 5.12, 17.21).
 test("the world-made toast shows once, not again on reload", async ({ page, foreman, fakeGame, fakePortal }) => {
   await fakePortal!.add("fp-ver", "1.0.0");
   await setUpModsWorld(page, foreman, fakeGame!, world);

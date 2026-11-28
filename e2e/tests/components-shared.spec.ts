@@ -309,8 +309,10 @@ async function noSidewaysScroll(page: Page, table: string) {
   });
 }
 
-test.describe("at 360 px", () => {
-  test.use({ viewport: { width: 360, height: 800 } });
+// 360 px is a small phone; 400 px is a large one, where the table's columns
+// first have room to widen (DESIGN 7, "The 320 px rules").
+for (const width of [360, 400]) test.describe(`at ${width} px`, () => {
+  test.use({ viewport: { width, height: 800 } });
 
   test("the save's players table and the Server page's players table stay inside their boxes", async ({ page, foreman, fakeGame }) => {
     await seed(page, foreman, fakeGame);

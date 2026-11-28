@@ -91,7 +91,7 @@ test("the zip counts each planet without amounts, one at a time, then downloads 
   await expect(page.locator("p .download-prep")).toHaveCount(0);
   expect(await zip(page).evaluate((a) => a.parentElement!.nextElementSibling!.className)).toBe("download-prep");
   await expect.poll(() => held.length).toBe(1);
-  // The app's one working bar shows it works; the words say which planet of how many (ruling 9).
+  // The app's one working bar shows it works; the words say which planet of how many (DESIGN 7.6).
   await expect(bar(page)).toBeVisible();
   await checkLooks(page);
   await held.shift()!.continue();

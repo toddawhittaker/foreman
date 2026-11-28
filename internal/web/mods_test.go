@@ -808,7 +808,7 @@ func TestPlanRedrawShowsAConflict(t *testing.T) {
 	id := g.world20("Base", "beta_1.0.0")
 	path := planPath(id, url.Values{"kind": {"install"}, "name": {"fp-main"}})
 	_, body := g.getStatus(path)
-	// Unticked, fp-conf would conflict, so it is left out with a note (#970).
+	// Unticked, fp-conf would conflict, so it is left out with a note (SPEC 9.2).
 	wantIn(t, "plan", body, `id="plan-unavailable"`, `hx-post="/worlds/`+id+`/mods/plan/redraw"`)
 	if strings.Contains(body, `hx-swap-oob="innerHTML:#announcer"`) {
 		t.Error("a full page load announces a redraw")

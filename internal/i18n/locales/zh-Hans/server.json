@@ -177,6 +177,7 @@
   "server.step.download_mods": "下载模组",
   "server.step.snapshot_mods": "更改模组前创建快照",
   "server.step.apply_mods": "更改模组",
+  "server.done.box": "{message} 完成于 {time}。",
   "server.cancel_stop": "取消停止",
   "server.op.start_refused": "启动被拒绝",
   "server.op.start_failed": "启动失败",

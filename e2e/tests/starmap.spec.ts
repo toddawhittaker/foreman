@@ -68,7 +68,9 @@ async function wikiOn(page: Page) {
   await page.goto("/settings/general");
   await page.getByLabel(wikiLabel).check();
   await page.getByRole("button", { name: "Save settings" }).click();
-  await expect(page).toHaveURL("/settings/general?done=saved");
+  // The toast came from the address, which drops its parameter (SPEC 17.21).
+  await expect(page.locator("#toasts .toast--success")).toBeVisible();
+  await expect(page).toHaveURL("/settings/general");
 }
 
 // The centre of the circle drawn for the location with this title.
@@ -470,7 +472,7 @@ test("a click on a planet's label on the large view's star map steps to that pla
 // DESIGN 8.8, 8.23: Previous and Next sit in one place for every planet, with or without
 // settings or Vulcanus's box, so clicks in one spot keep stepping; fake-bare has no settings.
 // The star map has no settings column, so its frame is wider: Next keeps its place and Previous
-// its line, and where Previous sits there is generate-layout.spec.ts's #974 test.
+// its line, and where Previous sits there is generate-layout.spec.ts's test of Previous.
 test("the planet arrows stay in one place for every planet and the star map", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await modded({ page, foreman, fakeGame: fakeGame! }, { bare: true });
   await section(page).getByRole("link", { name: /Nauvis.*opens the large view/ }).click();

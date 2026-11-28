@@ -110,7 +110,7 @@ func newConsoleHistory() *consoleHistory {
 }
 
 // A reply of only blank lines, such as the game's /time on a map that has
-// not yet run a second, is kept as no reply, so the page says so (#964).
+// not yet run a second, is kept as no reply, so the page says so (SPEC 8.4).
 func (h *consoleHistory) add(id string, e consoleEntry) {
 	if strings.TrimSpace(e.Reply) == "" {
 		e.Reply = ""

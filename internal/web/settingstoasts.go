@@ -6,12 +6,21 @@ import "github.com/toddawhittaker/foreman/internal/i18n"
 // after a save shows its plates and fields where they were (DESIGN 6,
 // "Toasts"). Field errors stay at their fields.
 
-// doneToast is a one-toast list for a success, or nothing.
-func doneToast(text i18n.Msg) []Toast {
+// doneParams are the address parameters a Settings page's success comes
+// from; toast.js drops them, so a reload shows the toast no more (DESIGN 6,
+// "Toasts").
+var doneParams = []string{"done"}
+
+// doneToast is a one-toast list for a success, or nothing. drop names the
+// address parameters it came from, "done" when none are given.
+func doneToast(text i18n.Msg, drop ...string) []Toast {
 	if text.IsZero() {
 		return nil
 	}
-	return []Toast{{Text: text}}
+	if len(drop) == 0 {
+		drop = doneParams
+	}
+	return []Toast{{Text: text, Drop: drop}}
 }
 
 // withErrorToast adds an error toast that sums up a refused action.
@@ -41,7 +50,7 @@ func (p SchedulePage) toasts() []Toast {
 	}
 }
 
-func (p NotificationsPage) toasts() []Toast { return doneToast(p.Done) }
+func (p NotificationsPage) toasts() []Toast { return doneToast(p.Done, "done", "preset", "host") }
 
 func (p PublicModsSettingsPage) toasts() []Toast {
 	switch p.Done {
@@ -54,19 +63,20 @@ func (p PublicModsSettingsPage) toasts() []Toast {
 }
 
 func (p APITokensPage) toasts() []Toast {
+	drop := []string{"done", "name"}
 	switch p.Done {
 	case "":
 		return nil
 	case "revoked":
-		return doneToast(i18n.M("apitokens.done.revoked", "name", p.DoneName))
+		return doneToast(i18n.M("apitokens.done.revoked", "name", p.DoneName), drop...)
 	case "mcp-on":
-		return doneToast(i18n.M("apitokens.done.mcp_on"))
+		return doneToast(i18n.M("apitokens.done.mcp_on"), drop...)
 	case "mcp-off":
-		return doneToast(i18n.M("apitokens.done.mcp_off"))
+		return doneToast(i18n.M("apitokens.done.mcp_off"), drop...)
 	case "api-on":
-		return doneToast(i18n.M("apitokens.done.api_on"))
+		return doneToast(i18n.M("apitokens.done.api_on"), drop...)
 	default:
-		return doneToast(i18n.M("apitokens.done.api_off"))
+		return doneToast(i18n.M("apitokens.done.api_off"), drop...)
 	}
 }
 

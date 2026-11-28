@@ -14,7 +14,7 @@ func offerNames(os []Offer) []string {
 }
 
 // An optional mod with no release on the world's line is left out with a
-// note, never offered (#970, SPEC 9.2).
+// note, never offered (SPEC 9.2).
 func TestOfferWithoutReleaseOnLineUnavailable(t *testing.T) {
 	p := portal{
 		"black-rubber-belts-remastered": {rel("2.4.6", "2.0", "? AdvancedBeltsSA", "? AdvancedBeltsUpdated")},
@@ -65,7 +65,7 @@ func TestOfferConflictingDepsUnavailable(t *testing.T) {
 	}
 }
 
-// A mod asked for is not offered back by a mod it offered (#972).
+// A mod asked for is not offered back by a mod it offered (SPEC 9.2).
 func TestOfferNotOfferedBack(t *testing.T) {
 	for _, kind := range []string{"? ", "+ "} {
 		p := portal{
@@ -89,7 +89,7 @@ func TestOfferRequiredElsewhereNotOffered(t *testing.T) {
 	}
 }
 
-// Two mods offering the same mod give one row (#972).
+// Two mods offering the same mod give one row (SPEC 9.2).
 func TestOfferSharedOnce(t *testing.T) {
 	for _, kind := range []string{"? ", "+ "} {
 		p := portal{"a": {rel("1.0.0", "2.0", kind+"d")}, "c": {rel("1.0.0", "2.0", kind+"d")}, "d": {rel("1.0.0", "2.0")}}

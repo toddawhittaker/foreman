@@ -47,7 +47,9 @@ test.describe("with a secret key", () => {
     await page.getByLabel("factorio.com username").fill(username);
     await page.getByLabel("factorio.com token").fill(token);
     await page.getByRole("button", { name: "Save account" }).click();
-    await expect(page).toHaveURL("/settings/factorio-account?done=saved");
+    // The toast came from the address, which drops its parameter (SPEC 17.21).
+    await expect(page.locator("#toasts .toast--success")).toBeVisible();
+    await expect(page).toHaveURL("/settings/factorio-account");
     await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is saved.");
     await expect(page.locator("#account-stored")).toContainText(/^Mod downloads are on\. The account was stored on .+ by admin\.$/);
     await expect(page.locator("#account-stored time")).toHaveAttribute("datetime", /^\d{4}-\d{2}-\d{2}T/);
@@ -69,7 +71,9 @@ test.describe("with a secret key", () => {
     await expectNoValues(page, username, token, "second-user", "second-token");
 
     await page.getByRole("button", { name: "Remove account" }).click();
-    await expect(page).toHaveURL("/settings/factorio-account?done=removed");
+    // The toast came from the address, which drops its parameter (SPEC 17.21).
+    await expect(page.locator("#toasts .toast--success")).toBeVisible();
+    await expect(page).toHaveURL("/settings/factorio-account");
     await expect(page.locator("#toasts .toast--success")).toHaveText("Done: The account is removed.");
     await expect(page.locator("#account-none")).toBeVisible();
     await expect(page.getByRole("button", { name: "Remove account" })).toHaveCount(0);
@@ -162,7 +166,9 @@ test.describe("with a secret key", () => {
     await page.getByLabel("factorio.com username").fill(username);
     await page.getByLabel("factorio.com token").fill(token);
     await page.getByRole("button", { name: "Replace account" }).click();
-    await expect(page).toHaveURL("/settings/factorio-account?done=saved");
+    // The toast came from the address, which drops its parameter (SPEC 17.21).
+    await expect(page.locator("#toasts .toast--success")).toBeVisible();
+    await expect(page).toHaveURL("/settings/factorio-account");
   });
 
   test("an unreadable stored account asks for it again", async ({ page, foreman }) => {

@@ -796,7 +796,7 @@ func (r *resolver) plan(unresolved []Unresolved, left map[string]bool) Plan {
 }
 
 // onePerMod keeps one offer per mod, so a mod two parents offer gets one
-// box (#972); it is chosen, or recommended, if any parent's offer is.
+// box (SPEC 9.2); it is chosen, or recommended, if any parent's offer is.
 func onePerMod(os []Offer) []Offer {
 	var out []Offer
 	at := map[string]int{}
@@ -814,7 +814,7 @@ func onePerMod(os []Offer) []Offer {
 
 // inPlan reports whether a mod is in the plan for a reason other than
 // being offered: on before this change, asked for, or required by a mod
-// that is itself in the plan. Such a mod is never offered (#972). A mod
+// that is itself in the plan. Such a mod is never offered (SPEC 9.2). A mod
 // only a ticked or recommended offer needs does not count, so ticking one
 // box never hides another (SPEC 9.2).
 func (r *resolver) inPlan(name string) bool {
@@ -841,7 +841,7 @@ func (r *resolver) fixed(name string, seen map[string]bool) bool {
 }
 
 // misfits names the offered mods the plan leaves off that do not fit the
-// world (#970, SPEC 9.2). Fit is judged against the fixed part of the plan
+// world (SPEC 9.2). Fit is judged against the fixed part of the plan
 // alone, so it is the same whichever parent offers the mod, and the same
 // whatever is ticked. Offers the plan turns on are checked by the walk
 // itself.

@@ -218,7 +218,7 @@ test("the plan's fold of mods that stay as they are opens and passes the checks"
   await checkPage(page);
 });
 
-// SPEC 9.2, #970 and #972: an offered mod with no release for the world's
+// SPEC 9.2: an offered mod with no release for the world's
 // game line is left out with a note, never a box, and a mod already in the
 // plan is never offered back.
 test("offers fit the world and never repeat a mod in the plan", async ({ page, foreman, fakeGame, fakePortal }) => {

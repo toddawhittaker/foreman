@@ -45,7 +45,7 @@ func (s *server) prepareExport(ctx context.Context, id string, saves world.Expor
 }
 
 // exportSaves reads the form's choice of saves: every save unless the form
-// asks for the one that loads next (SPEC 5.13, plan ruling 25).
+// asks for the one that loads next (SPEC 5.13).
 func exportSaves(v string) (world.ExportSaves, bool) {
 	switch world.ExportSaves(v) {
 	case "", world.ExportAllSaves:

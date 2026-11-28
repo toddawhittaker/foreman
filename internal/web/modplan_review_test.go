@@ -286,7 +286,7 @@ func TestReviewAfterGenerateSaysTheWorldWasMade(t *testing.T) {
 	}
 	q.Set(generatedQuery, "1")
 	_, body := g.getStatus(planPath(id, q))
-	wantIn(t, "note", body, `<div class="toast toast--success" data-toast>`)
+	wantIn(t, "note", body, `<div class="toast toast--success" data-toast data-drop="`+generatedQuery+`">`)
 	wantIn(t, "note text", plain(body), "Generated Club world from the favorite.")
 	if strings.Contains(body, " autofocus") {
 		t.Error("the toast takes focus")

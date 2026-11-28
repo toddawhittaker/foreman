@@ -20,7 +20,7 @@ func renderModName(t *testing.T, m ModName) string {
 }
 
 // A mod is shown by its title, linked to its portal page in a new tab, and
-// never translated (ruling on #623; SPEC 9.15).
+// never translated (SPEC 9.15).
 func TestModNameShowsTheLinkedTitle(t *testing.T) {
 	got := renderModName(t, modName("belt-direction", "Belt Direction", true))
 	for _, want := range []string{

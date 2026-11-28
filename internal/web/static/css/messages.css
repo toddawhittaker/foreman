@@ -147,24 +147,6 @@
   min-block-size: var(--target-min);
 }
 
-/* The Done message's close button sits at its top end corner, in a 44 px
-   target (DESIGN 7.3). */
-.message--closable {
-  position: relative;
-}
-
-/* The message's text keeps room for the button: its width and a gap, from the
-   box's edge, so no line runs under it (DESIGN 7.3). */
-.message--closable > p {
-  padding-inline-end: calc(var(--target-min) + var(--space-2) - var(--space-4));
-}
-
-.message__dismiss {
-  position: absolute;
-  inset-block-start: 0;
-  inset-inline-end: 0;
-}
-
 .message__close,
 .message__close:hover {
   --icon: var(--i-close);
@@ -549,20 +531,6 @@
 
 .wait.htmx-request {
   display: grid;
-}
-
-.wait progress,
-.message progress {
-  inline-size: 100%;
-  max-inline-size: 20rem;
-  accent-color: var(--color-selected);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .wait progress,
-  .message progress {
-    display: none;
-  }
 }
 
 /* Windows high contrast drops fills, so selected states need a drawn edge (DESIGN 3, "Forced colours"). */

@@ -183,6 +183,7 @@
   "server.step.download_mods": "Descargar los mods",
   "server.step.snapshot_mods": "Tomar la instantánea antes del cambio de mods",
   "server.step.apply_mods": "Cambiar los mods",
+  "server.done.box": "{message} Terminado a las {time}.",
   "server.cancel_stop": "Cancelar la detención",
   "server.op.start_refused": "Inicio rechazado",
   "server.op.start_failed": "El inicio falló",

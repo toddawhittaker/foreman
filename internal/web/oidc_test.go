@@ -417,7 +417,7 @@ func TestOIDCDiscoveryRetriedAfterFailure(t *testing.T) {
 	}
 }
 
-// SPEC 12.7 (ruling 3): a name clash with a password user is refused with a
+// SPEC 12.7: a name clash with a password user is refused with a
 // page that says why; nothing is linked.
 func TestOIDCNameClashWithPasswordUser(t *testing.T) {
 	o := newOIDCHarness(t, "local,oidc", nil)
@@ -444,7 +444,7 @@ func TestOIDCNameClashWithLinkedUser(t *testing.T) {
 	}
 }
 
-// SPEC 12.7 (ruling 3): a user made by trusted headers is linked once, on
+// SPEC 12.7: a user made by trusted headers is linked once, on
 // the first OIDC sign-in, and keeps signing in both ways.
 func TestOIDCLinksHeaderUser(t *testing.T) {
 	env := map[string]string{"FOREMAN_AUTH_REQUIRED_GROUP": testGroup}

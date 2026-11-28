@@ -916,7 +916,7 @@ type PlayerLists struct {
 	Admins      map[string]bool
 	AdminsKnown bool
 	// WhitelistKept is true when the running game keeps the whitelist, so
-	// the rows offer its buttons (ruling 8, DESIGN 8.13). Whitelisted holds
+	// the rows offer its buttons (DESIGN 8.13). Whitelisted holds
 	// its names, lower-cased.
 	WhitelistKept bool
 	Whitelisted   map[string]bool
@@ -1025,7 +1025,7 @@ func (ServerPage) PlayerReturn() string { return PathServer }
 
 // readPlayerLists reads the lists the player rows need while the game runs
 // (DESIGN 8.12). Each is read from the world's own files, which the game
-// writes itself while it runs (ruling 9).
+// writes itself while it runs (SPEC 8.3).
 func (s *server) readPlayerLists(ctx context.Context, id string) PlayerLists {
 	var l PlayerLists
 	if names, ok := s.readNameList(id, world.ServerAdminListFile, gamesettings.ParseAdminList); ok {
