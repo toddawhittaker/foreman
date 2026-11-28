@@ -2105,4 +2105,14 @@ tr:has(> td > .player-actions) > td.num {
   margin: 0;
   text-align: end;
 }
+
+/* On a phone Follow newest has its row to itself, so the count takes that
+   row's end and adds no row: the log starts on the first screen above the
+   command bar (DESIGN 8.5). */
+@media (max-width: 39.99rem) {
+  .log-tools > .log-tools__count {
+    flex: 1 1 0;
+    min-inline-size: 0;
+  }
+}
 }
