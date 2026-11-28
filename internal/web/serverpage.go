@@ -558,6 +558,11 @@ func (p ServerPage) ShowStop() bool {
 	return p.CanStop() || (p.transition() && p.runControls())
 }
 
+// ShowSnapshot says whether Take snapshot is drawn: in every state the
+// server can be seen in, disabled when refused. While Docker cannot be
+// asked the page shows nothing it cannot know (SPEC 7.1).
+func (p ServerPage) ShowSnapshot() bool { return p.Status.State != game.StateUnknown }
+
 // SnapshotLeads is true while the game runs, through a stop or restart:
 // Take snapshot is then the plate's primary (DESIGN 7.1).
 func (p ServerPage) SnapshotLeads() bool {

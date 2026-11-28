@@ -529,7 +529,7 @@ main:has(#server-title :is(.state--crashed, .state--crash-looping)) .status-card
 /* The game log on a warm paper surface: 22 px lines in a pane that grows in
    20 px steps, sized so the command field is on the first screen. */
 .terminal .log-frame > .log {
-  block-size: calc(round(down, clamp(15rem, 100vh - 34rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
+  block-size: calc(round(down, clamp(15rem, 100vh - 38rem, 34rem), 1.25rem) + var(--space-3) + 2 * var(--border-width));
   padding: var(--space-3) var(--card-pad);
   overflow: auto;
   background: light-dark(var(--color-raised), var(--color-deep));
@@ -1728,11 +1728,9 @@ tr:has(> td > .player-actions) > td.num {
   max-inline-size: 24rem;
 }
 
+/* The filter ends the row; Follow newest sits beside the find field. */
 .log-tools > .log-tools__filter {
   flex: none;
-}
-
-.log-tools > .log-tools__follow {
   margin-inline-start: auto;
 }
 
@@ -1743,9 +1741,6 @@ tr:has(> td > .player-actions) > td.num {
     min-inline-size: 0;
   }
 
-  .log-tools > .log-tools__follow {
-    margin-inline-start: 0;
-  }
 }
 
 .terminal .log-frame > .log pre > span[hidden][hidden] {
@@ -2038,6 +2033,7 @@ tr:has(> td > .player-actions) > td.num {
 @media (max-width: 39.99rem) {
   .log-tools > .log-tools__filter {
     flex: 1 1 100%;
+    margin-inline-start: 0;
   }
 }
 
@@ -2054,13 +2050,4 @@ tr:has(> td > .player-actions) > td.num {
   text-align: end;
 }
 
-/* On a phone Follow newest has its row to itself, so the count takes that
-   row's end and adds no row: the log starts on the first screen above the
-   command bar (DESIGN 8.5). */
-@media (max-width: 39.99rem) {
-  .log-tools > .log-tools__count {
-    flex: 1 1 0;
-    min-inline-size: 0;
-  }
-}
 }

@@ -404,7 +404,9 @@
 {{- $failure := .Failure}}
 <div class="actions server-actions">
   {{- /* Take snapshot leads in every state, so it keeps one place; the state's own buttons follow it. While the game runs, the safe step is the plate's primary (DESIGN 7.1). */}}
+  {{- if .ShowSnapshot}}
   <form method="post" action="{{.SnapshotPath}}"><button type="submit" class="button{{if .SnapshotLeads}} button--primary{{end}} server-act--snapshot" id="act-snapshot"{{if not .CanSnapshot}} disabled{{end}}>{{t "worlds.snapshots.take.button"}}</button></form>
+  {{- end}}
   {{- if .OffersDownload}}
   <form method="post" action="{{.PullPath}}"><button type="submit" class="button button--primary server-act--pull" id="act-pull">{{t "server.action.download"}}</button></form>
   {{- end}}

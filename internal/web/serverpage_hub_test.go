@@ -273,7 +273,7 @@ func TestTakeSnapshotOffered(t *testing.T) {
 		if got := strings.Contains(html, `<form method="post" action="/worlds/base/take-snapshot"><button type="submit" `+face+` id="act-snapshot">Take snapshot</button></form>`); got != want {
 			t.Errorf("%s: offered %v, want %v", state, got, want)
 		}
-		if got := strings.Contains(html, `id="act-snapshot" disabled>Take snapshot</button>`); got == want {
+		if got := strings.Contains(html, `id="act-snapshot" disabled>Take snapshot</button>`); got == (want || state == game.StateUnknown) {
 			t.Errorf("%s: drawn disabled %v, want %v", state, got, !want)
 		}
 	}
