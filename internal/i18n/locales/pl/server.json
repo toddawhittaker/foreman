@@ -271,6 +271,7 @@
   "server.done.restore_short": "Świat został przywrócony.",
   "server.done.switch_short": "Światy zostały przełączone.",
   "server.done.close": "Zamknij ten komunikat",
+  "server.done.dismiss_undo": "Odrzuć propozycję cofnięcia",
   "server.done.update_short": "Wersja gry została zaktualizowana.",
   "server.done.mods_short": "Modyfikacje zostały zmienione.",
   "server.done.rollback_short": "Świat został cofnięty.",

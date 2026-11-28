@@ -194,6 +194,49 @@ test.describe("with the fake game", () => {
     await checkPage(page);
   });
 
+  // DESIGN 5, 8.14: when the game stops while the message field has focus,
+  // the form goes, and focus goes to the page's heading, which says the game
+  // stopped, not to the top of the page.
+  test("focus goes to the heading when the game stops under the message field", async ({ page, foreman, fakeGame }) => {
+    await setUp(page, foreman, fakeGame!);
+    await field(page).focus();
+    expect((await page.request.post("/worlds/base/stop", { form: { countdown: "0" }, maxRedirects: 0 })).status()).toBe(303);
+    await expect(page.locator("#chat-not-running")).toBeVisible(live);
+    await expect(page.locator("#chat-panel")).toBeHidden();
+    await expect(page.locator("#control-heading")).toBeFocused();
+  });
+
+  // DESIGN 8.14: a message the game refuses (409) is not swapped in, so it
+  // keeps no scroll: a later swap must not jump the page back to where it was
+  // when the message was sent.
+  test("a refused message keeps no scroll for a later swap", async ({ page, foreman, fakeGame }) => {
+    await page.setViewportSize({ width: 390, height: 500 });
+    await setUp(page, foreman, fakeGame!);
+    await page.route("**/worlds/base/chat", (route) =>
+      route.fulfill({
+        status: 409,
+        contentType: "text/html",
+        body: `<div hx-swap-oob="afterbegin:#toasts"><div class="toast toast--error" data-toast><p class="toast__text"><strong>Error:</strong> <span data-toast-text>Refused.</span></p><button type="button" class="toast__close" aria-label="Close this message" data-toast-close></button></div></div>`,
+      }),
+    );
+    await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+    await field(page).fill("hello");
+    await field(page).press("Enter");
+    await expect(page.locator("#toasts .toast--error")).toBeVisible();
+    const y = await page.evaluate(() => {
+      window.scrollTo({ top: document.documentElement.scrollHeight, behavior: "instant" });
+      return window.scrollY;
+    });
+    expect(y).toBeGreaterThan(0);
+    // A new line, and a later swap of any live region (here the heading's
+    // badge, as the stream sends it), leave the page where the person put it.
+    await fakeGame!.call("/join", { name: container, player: "alice" });
+    await fakeGame!.call("/chat", { name: container, player: "alice", text: "a new line" });
+    await expect(log(page)).toContainText("a new line", live);
+    await page.evaluate(() => document.dispatchEvent(new CustomEvent("htmx:afterSettle", { bubbles: true })));
+    expect(await page.evaluate(() => window.scrollY)).toBe(y);
+  });
+
   test("the tab is translated", async ({ page, foreman, fakeGame }) => {
     await setUp(page, foreman, fakeGame!);
     await pickLanguage(page, "de");

@@ -336,7 +336,8 @@ test.describe("with the fake game", () => {
   // the page is live again.
   test("a dropped live connection shows a note until it reconnects", async ({ page, foreman, fakeGame }) => {
     // The stream cannot be reached, as while Foreman restarts.
-    const stream = "**/worlds/base/events";
+    // The address may carry a query (the toasts the page was drawn with).
+    const stream = /\/worlds\/base\/events(\?.*)?$/;
     await page.route(stream, (route) => route.fulfill({ status: 503, body: "" }));
     await setUp(page, foreman, fakeGame!);
     const note = page.locator("#live-lost");

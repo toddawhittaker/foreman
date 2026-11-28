@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"errors"
+	"maps"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -63,12 +64,14 @@ type gameRuns struct {
 	wg        sync.WaitGroup
 	mu        sync.Mutex
 	closed    bool
-	running   map[string]int            // actions in flight, by world id
-	locking   map[string]int            // those of them that hold the world's lock
-	results   map[string]actionResult   // by world id
-	asides    map[string][]actionResult // actions asked for while another ran
-	cancelled map[string]bool           // worlds whose running action had its stop cancelled
-	changed   chan struct{}             // closed and replaced when a result is stored, or when a snapshot is taken or deleted outside a task
+	running   map[string]int                  // actions in flight, by world id
+	locking   map[string]int                  // those of them that hold the world's lock
+	results   map[string]actionResult         // by world id
+	asides    map[string][]actionResult       // actions asked for while another ran
+	cancelled map[string]bool                 // worlds whose running action had its stop cancelled
+	toasted   map[string]map[string]toastMark // by world id, the result toasts a page has shown, by key (DESIGN 6)
+	toastSeq  uint64                          // counts page loads and marks; see toastMark
+	changed   chan struct{}                   // closed and replaced when a result is stored, or when a snapshot is taken or deleted outside a task
 	closeOnce sync.Once
 }
 
@@ -92,11 +95,14 @@ type actionResult struct {
 	Mods modResult
 	// At is when the action ended.
 	At time.Time
+	// Op is the operation a cancelled stop countdown ended, which names its
+	// toast both before and after the result is stored (SPEC 7.6).
+	Op uint64
 }
 
 func newGameRuns() *gameRuns {
 	g := &gameRuns{running: map[string]int{}, locking: map[string]int{}, results: map[string]actionResult{},
-		asides: map[string][]actionResult{}, cancelled: map[string]bool{}, changed: make(chan struct{})}
+		asides: map[string][]actionResult{}, cancelled: map[string]bool{}, toasted: map[string]map[string]toastMark{}, changed: make(chan struct{})}
 	g.ctx, g.cancel = context.WithCancel(context.Background())
 	return g
 }
@@ -148,6 +154,7 @@ func (g *gameRuns) runOn(ids []string, holdsLock bool, do func(ctx context.Conte
 		if holdsLock && !other[i] || !holdsLock && g.running[id] == 0 {
 			delete(g.results, id)
 			delete(g.asides, id)
+			delete(g.toasted, id)
 			g.changedLocked()
 		}
 		g.running[id]++
@@ -254,6 +261,50 @@ func (g *gameRuns) dismiss(id string, at int64) {
 	g.changedLocked()
 }
 
+// toastMark says when a result toast was first shown and by which page,
+// both as counts of toastSeq: a page load takes a new count, which names the
+// page, and each mark takes one too (DESIGN 6, "Toasts").
+type toastMark struct{ At, Page uint64 }
+
+// pageToasts notes that a page load showed the world's result toasts with
+// these keys, so a later load leaves them out. The results stay, with their
+// Undo and Switch back offers; the next action forgets the marks with them.
+// It returns the load's count, which names the page to its stream.
+func (g *gameRuns) pageToasts(id string, keys []string) uint64 {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.toastSeq++
+	g.markLocked(id, keys, g.toastSeq)
+	return g.toastSeq
+}
+
+// streamToasts notes that the stream of the page named page sent the
+// world's result toasts with these keys.
+func (g *gameRuns) streamToasts(id string, keys []string, page uint64) {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	g.toastSeq++
+	g.markLocked(id, keys, page)
+}
+
+func (g *gameRuns) markLocked(id string, keys []string, page uint64) {
+	if g.toasted[id] == nil {
+		g.toasted[id] = map[string]toastMark{}
+	}
+	for _, k := range keys {
+		if _, ok := g.toasted[id][k]; !ok {
+			g.toasted[id][k] = toastMark{At: g.toastSeq, Page: page}
+		}
+	}
+}
+
+// toastedKeys returns the world's toast marks.
+func (g *gameRuns) toastedKeys(id string) map[string]toastMark {
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	return maps.Clone(g.toasted[id])
+}
+
 // others returns the results of the actions asked for while another ran.
 func (g *gameRuns) others(id string) []actionResult {
 	g.mu.Lock()
@@ -333,6 +384,7 @@ func (s *server) serverPage(ctx context.Context, sum world.Summary, st game.Stat
 		p.Result, p.HaveResult = cancelledByOperation(st, s.now())
 	}
 	p.Others = s.runs.others(sum.ID)
+	p.Toasted = s.runs.toastedKeys(sum.ID)
 	if p.HaveResult && p.Result.Action == game.AuditMods {
 		p.Result.Mods.Titles = s.worlds.InstalledTitles(sum.ID)
 	}
@@ -410,6 +462,9 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	p.Admin = isAdmin(u)
 	p.PlayerResult = s.playerResults.take(u.ID, sum.ID, PathServer)
 	p.RecentSnapshots, p.RecentFailed = s.recentSnapshots(sum.ID)
+	// A result's toast shows once: the next load leaves it out, while its
+	// Undo row stays (DESIGN 6, "Toasts").
+	p.ToastSeq = s.runs.pageToasts(sum.ID, toastKeys(p.ResultToasts()))
 	s.page(w, r, http.StatusOK, u.Username, p)
 }
 
@@ -502,7 +557,13 @@ func (s *server) finish(id, action string, err error) actionResult {
 			s.log.Warn("server control", "world", id, "action", action, "error", err)
 		}
 	}
-	return actionResult{Action: action, Err: err}
+	res := actionResult{Action: action, Err: err}
+	if errors.Is(err, game.ErrStopCancelled) {
+		if o := s.game.Status(id).Operation; o != nil {
+			res.Op = o.ID
+		}
+	}
+	return res
 }
 
 // handleStart starts the active world (SPEC 7.3). "anyway" starts despite

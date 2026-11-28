@@ -9,12 +9,19 @@ type Toast struct {
 	// Error marks a failed action; otherwise the toast says it was done.
 	Error bool
 	Text  i18n.Msg
+	// Key names the result the toast is about, so a page shows it once
+	// (DESIGN 6, "Toasts"); "" for a toast drawn with its answer only.
+	Key string
 }
 
-// Toasts are the page's result messages, from pages that have any.
+// Toasts are the page's result messages, from pages that have any. A page
+// whose htmx answers carry its toasts too has them as an exported method.
 func (v view) Toasts() []Toast {
-	if p, ok := v.Page.(interface{ toasts() []Toast }); ok {
+	switch p := v.Page.(type) {
+	case interface{ toasts() []Toast }:
 		return p.toasts()
+	case interface{ Toasts() []Toast }:
+		return p.Toasts()
 	}
 	return nil
 }

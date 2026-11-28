@@ -263,12 +263,18 @@
   }, true);
 
   // After a command or a message is sent the page stays where it is: the
-  // reply is read out, and the history box shows its end (ruling 1 of fixes
-  // 20). The swap puts focus back on the new panel's control, and the
-  // browser may scroll to bring it into view, so the scroll is put back.
+  // reply is read out, and the history box shows its end (DESIGN 6, "Toasts":
+  // nothing moves because of a change elsewhere). The swap puts focus back on
+  // the new panel's control, and the browser may scroll to bring it into
+  // view, so the scroll is put back. A refusal htmx does not swap keeps no
+  // scroll, so a later swap elsewhere never jumps back to it.
   let keptScroll = null;
   document.addEventListener("htmx:beforeSwap", (e) => {
+    if (!e.detail.shouldSwap) return;
     if (e.detail.target?.matches?.("#console-panel, #chat-panel")) keptScroll = window.scrollY;
+  });
+  document.addEventListener("htmx:afterRequest", (e) => {
+    if (!e.detail.successful) keptScroll = null;
   });
   document.addEventListener("htmx:afterSettle", () => {
     if (keptScroll === null) return;
