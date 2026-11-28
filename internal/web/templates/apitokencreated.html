@@ -2,15 +2,13 @@
 
 {{define "scripts"}}<script src="{{static "copy.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "api-token"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") apiTokensPath (t "apitokens.tab"))}}{{end}}
+{{define "head-title"}}{{t "apitokens.created.title" "name" .Page.Token.Name}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "api-token"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") apiTokensPath (t "apitokens.tab"))}}
-<header class="page-head">
-  <h1>{{t "apitokens.created.title" "name" .Token.Name}}</h1>
-</header>
-{{template "rail" $}}
 {{- /* Two plates on a wide screen: what was made and its secret, with its warning right above it, then beside them where to use it. One column on a phone. */}}
 <div class="split token-created-layout">
 <section class="panel token-created" aria-labelledby="done-message">
@@ -72,4 +70,3 @@
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

@@ -20,7 +20,7 @@
       <button type="submit" class="button" id="act-token-renew-{{.ID}}" aria-label="{{t "apitokens.renew.name" "name" .Name}}">{{t "apitokens.renew"}}</button>
     </form>
     {{- end}}
-    <a href="{{.RevokePath}}" class="button button--remove button--revoke" id="act-token-revoke-{{.ID}}" aria-label="{{t "apitokens.revoke.name" "name" .Name "owner" .Owner}}">{{t "apitokens.revoke"}}</a>
+    <a href="{{.RevokePath}}" class="button button--remove" id="act-token-revoke-{{.ID}}" aria-label="{{t "apitokens.revoke.name" "name" .Name "owner" .Owner}}">{{t "apitokens.revoke"}}</a>
   </div>
   {{- end}}
 </li>
@@ -29,21 +29,14 @@
 {{/* The column names of a token list on a wide screen; each row keeps its own for screen readers. */}}
 {{define "token-head"}}<div class="token-head" aria-hidden="true"><span>{{t "apitokens.create.name"}}</span><span>{{t "apitokens.fact.owner"}}</span><span>{{t "apitokens.fact.scope"}}</span><span>{{t "apitokens.fact.expires"}}</span><span>{{t "apitokens.fact.created"}}</span><span>{{t "apitokens.fact.used"}}</span></div>{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "api-tokens"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "apitokens.tab"))}}{{end}}
+{{define "head-title"}}{{t "apitokens.title"}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "api-tokens"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "apitokens.tab"))}}
-<header class="page-head">
-  <h1>{{t "apitokens.title"}}</h1>
-</header>
-{{template "rail" $}}
 {{- template "summary" .Problems}}
-{{- if .Done}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{if eq .Done "revoked"}}{{t "apitokens.done.revoked" "name" .DoneName}}{{else if eq .Done "mcp-on"}}{{t "apitokens.done.mcp_on"}}{{else if eq .Done "mcp-off"}}{{t "apitokens.done.mcp_off"}}{{else if eq .Done "api-on"}}{{t "apitokens.done.api_on"}}{{else}}{{t "apitokens.done.api_off"}}{{end}}</p>
-</div>
-{{- end}}
 <p class="page-intro">{{t "apitokens.intro"}}</p>
 <div class="access-row">
 {{- /* MCP access is the switch every token depends on: said once, as a state plate with its one control, before the tokens (SPEC 12.10). */}}
@@ -96,6 +89,12 @@
 <section class="panel" id="create-token" aria-labelledby="create-heading">
   <h2 id="create-heading">{{t "apitokens.create.heading"}}</h2>
   <form method="post" action="{{.Path}}" class="token-create" novalidate>
+    {{- /* The access plates above hold the switches; here one note says what that means for this token, before it is made (SPEC 12.10). */}}
+    {{- if not (or .MCPOn .APIOn)}}
+    <div class="message message--note" id="token-access-off">
+      <p><strong>{{t "common.label.note"}}</strong> {{t "apitokens.both_off"}}</p>
+    </div>
+    {{- end}}
     {{template "required-note"}}
     <div class="field">
       <label for="token-name" class="required">{{t "apitokens.create.name"}}</label>
@@ -121,13 +120,7 @@
     <div class="message message--warning" id="scope-admin-warning">
       <p><strong>{{t "common.label.warning"}}</strong> {{t "apitokens.create.admin_warning"}}</p>
     </div>
-    <div class="actions form-end">
-      {{- /* The access plates above hold the switches; here one line says what that means for this token (SPEC 12.10). */}}
-      {{- if not (or .MCPOn .APIOn)}}
-      <p class="token-access-off" id="token-access-off">{{t "apitokens.both_off"}}</p>
-      {{- end}}
-      <button type="submit" class="button button--primary" id="act-token-create">{{t "apitokens.create.button"}}</button>
-    </div>
+    {{template "form-foot" (formFoot "submit" (t "apitokens.create.button") "submitID" "act-token-create")}}
   </form>
 </section>
 {{- /* One list of tokens. An admin sees every user's and filters it to their own or all; the filter is CSS only, so nothing reloads (SPEC 12.10). */}}
@@ -154,13 +147,12 @@
   </ul>
   {{- end}}
   {{- if not .Mine}}
-  <p class="empty" id="my-tokens-empty">{{t "apitokens.mine.empty"}}</p>
+  {{template "empty" (empty "settings" (t "apitokens.mine.empty") "my-tokens-empty")}}
   {{- end}}
   {{- if and .Admin (not .All)}}
-  <p class="empty" id="all-tokens-empty">{{t "apitokens.all.empty"}}</p>
+  {{template "empty" (empty "settings" (t "apitokens.all.empty") "all-tokens-empty")}}
   {{- end}}
 </section>
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

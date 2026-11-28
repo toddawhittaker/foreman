@@ -2,24 +2,19 @@
 
 {{define "scripts"}}<script src="{{static "schedule.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "schedule"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.schedule"))}}{{end}}
+{{define "head-title"}}{{t "common.menu.schedule"}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "schedule"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") "" (t "common.menu.schedule"))}}
-<h1>{{t "common.menu.schedule"}}</h1>
-{{template "rail" $}}
-{{- if .Saved}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{if .On}}{{tHTML "schedule.done.next" "next" (momentUTC .Next)}}{{else}}{{t "schedule.done.off"}}{{end}}</p>
-</div>
-{{- end}}
 {{template "summary" .Problems}}
 {{- /* The state leads, as on the account page (DESIGN 8.15). */}}
 {{- if .On}}
-<p id="schedule-state">{{tHTML "schedule.state.on" "time" .SavedClock "zone" (ident .SavedZone) "next" (momentUTC .Next)}}</p>
+<p class="page-intro" id="schedule-state">{{tHTML "schedule.state.on" "time" .SavedClock "zone" (ident .SavedZone) "next" (momentUTC .Next)}}</p>
 {{- else}}
-<p id="schedule-state">{{t "schedule.state.off"}}</p>
+<p class="page-intro" id="schedule-state">{{t "schedule.state.off"}}</p>
 {{- end}}
 {{- /* One card, as on the account page: how the restart works in the first column, its settings in the second (DESIGN 4). */}}
 <form method="post" action="{{.Path}}" class="panel setting-row" novalidate>
@@ -71,13 +66,8 @@
     {{- end}}
   </div>
   </div>
-  {{- /* The same foot bar as every settings form: Cancel, then the save at the end. */}}
-  <div class="actions form-foot">
-    <a href="{{serverPath}}">{{t "worlds.cancel"}}</a>
-    <button type="submit" class="button button--primary" id="act-schedule-save">{{t "schedule.save"}}</button>
-  </div>
+  {{template "form-foot" (formFoot "cancel" serverPath "cancelText" (t "worlds.cancel") "submit" (t "schedule.save") "submitID" "act-schedule-save")}}
 </form>
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

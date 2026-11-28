@@ -1,14 +1,12 @@
 {{define "title"}}{{if .Page.Edit}}{{t "notify.edit.named" "preset" (msg .Page.Kept.Preset) "host" .Page.Kept.Host}}{{else}}{{t "notify.add"}}{{end}}{{end}}
 
-{{define "rail"}}{{template "settings-tabs" "notification"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs generalPath (t "common.nav.settings") notificationsPath (t "common.menu.notifications"))}}{{end}}
+{{define "head-title"}}{{if .Page.Edit}}{{t "notify.edit.named" "preset" (msg .Page.Kept.Preset) "host" .Page.Kept.Host}}{{else}}{{t "notify.add"}}{{end}}{{end}}
+{{define "head-nav"}}{{template "settings-tabs" "notification"}}{{end}}
 
 {{define "content" -}}
+{{template "pagehead" $}}
 {{with .Page}}
-{{template "crumb" (crumbs generalPath (t "common.nav.settings") notificationsPath (t "common.menu.notifications"))}}
-<header class="page-head">
-  <h1>{{if .Edit}}{{t "notify.edit.named" "preset" (msg .Kept.Preset) "host" .Kept.Host}}{{else}}{{t "notify.add"}}{{end}}</h1>
-</header>
-{{template "rail" $}}
 {{template "summary" .Problems}}
 {{- /* The address is write-only: it is never put back in a value attribute (DESIGN 8.16). */}}
 <form method="post" action="{{.Path}}" class="panel webhook-form" novalidate>
@@ -91,13 +89,10 @@
     <p class="error" id="webhook-lang-error"><strong>{{t "common.error.label"}}</strong> {{msg .LangError}}</p>
     {{- end}}
   </div>
-  <div class="actions form-foot">
-    <a href="{{.BackPath}}">{{t "worlds.cancel"}}</a>
-    <button type="submit" class="button button--primary" id="act-webhook-save">{{if .Edit}}{{t "notify.form.save"}}{{else}}{{t "notify.form.add"}}{{end}}</button>
-  </div>
+  {{- $save := t "notify.form.add"}}{{if .Edit}}{{$save = t "notify.form.save"}}{{end}}
+  {{template "form-foot" (formFoot "cancel" .BackPath "cancelText" (t "worlds.cancel") "submit" $save "submitID" "act-webhook-save")}}
 </form>
 <script src="{{static "notifyurl.js"}}" defer></script>
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}
