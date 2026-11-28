@@ -79,7 +79,16 @@
     } catch (_) {
       // Without storage the page still reloads, only silently.
     }
-    location.reload();
+    // The reload drops this page's toasts, and another open page, reloaded
+    // first, may have shown the switch's Done toast. The reload names this
+    // page's load, the stream's "toasted", so it shows the toasts this page
+    // had not, once; they then drop the parameter (DESIGN 6, "Toasts").
+    const next = new URL(location.href);
+    const stream = document.getElementById("main")?.getAttribute("sse-connect");
+    const seq = stream ? new URL(stream, location.href).searchParams.get("toasted") : null;
+    next.search = seq ? `?moved=${seq}` : "";
+    if (next.href === location.href) location.reload();
+    else location.replace(next.href);
   });
 
   // After a reload that followed a switch, focus goes to the page's heading,

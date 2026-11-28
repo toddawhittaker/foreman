@@ -60,7 +60,7 @@ func TestSwitchDownloadsTheNewWorldsImage(t *testing.T) {
 		t.Error("the download is not listed before the stop")
 	}
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	body := g.waitPage(`id="server-title">Old <span`, running, "The worlds are switched")
 	g.wantMissing("server page", body, gamePath(a, "pull-image"), "Download game image")
 	if !slices.Contains(g.fake.Daemon().Pulls(), image20) {
@@ -81,7 +81,7 @@ func TestSwitchPostAsksNoSize(t *testing.T) {
 	if n := rel.sizeAsked(); n != 1 {
 		t.Fatalf("the page asked for the size %d times, want 1", n)
 	}
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	g.waitPage(`id="server-title">Old <span`, "The worlds are switched")
 	if n := rel.sizeAsked(); n != 1 {
 		t.Errorf("the POST asked for the size: %d calls in all, want 1", n)
@@ -98,7 +98,7 @@ func TestSwitchFailedDownloadOffersNoWrongDownload(t *testing.T) {
 	g.startGame(a)
 	g.fake.Daemon().FailPull(image20, "manifest unknown")
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	// The failed operation shows in the game's status a moment before the
 	// action's result, which holds the reason, is stored; the live page
 	// sends both. So the wait covers the reason too.

@@ -175,7 +175,7 @@ func TestAPITokenRenew(t *testing.T) {
 	c = hn.signInAgain("alice")
 	rec := hn.post(tokenPath(tok.ID, "renew"), url.Values{"return": {"/worlds?done=renewed&name=Old&x=1"}}, withCookie(c))
 	hn.wantRedirect(rec, "/worlds?done=renewed&name=Claude&x=1")
-	if body := hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(); !strings.Contains(body, `id="renewed-message"`) || !strings.Contains(body, "Renewed Claude.") {
+	if body := hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(); !strings.Contains(body, `data-drop="done name"`) || !strings.Contains(body, "Renewed Claude.") {
 		t.Error("the page renewed from shows no Done message")
 	}
 	if _, err := hn.tokensFor(t).Check(context.Background(), secret); err != nil {
@@ -422,13 +422,13 @@ func TestAPITokenRenewedMessageNotSpoofed(t *testing.T) {
 	hn.createToken(c, "Claude", auth.ScopeRead)
 	for _, name := range []string{"Your account is locked, call 555-0100", "claude-x"} {
 		body := hn.get("/worlds?"+url.Values{"done": {"renewed"}, "name": {name}}.Encode(), withCookie(c)).Body.String()
-		if strings.Contains(body, `id="renewed-message"`) {
+		if strings.Contains(body, `data-drop="done name"`) {
 			t.Errorf("name %q showed a Renewed message", name)
 		}
 	}
 	tok := hn.tokenNamed("Claude")
 	hn.post(tokenPath(tok.ID, "revoke"), url.Values{}, withCookie(c))
-	if body := hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(); strings.Contains(body, `id="renewed-message"`) {
+	if body := hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(); strings.Contains(body, `data-drop="done name"`) {
 		t.Error("a revoked token's name showed a Renewed message")
 	}
 }
@@ -440,7 +440,7 @@ func TestAPITokenRenewedMessageOnlyForWorkingToken(t *testing.T) {
 	c := hn.signIn()
 	hn.createToken(c, "Claude", auth.ScopeRead)
 	shown := func() bool {
-		return strings.Contains(hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(), `id="renewed-message"`)
+		return strings.Contains(hn.get("/worlds?done=renewed&name=Claude", withCookie(c)).Body.String(), `data-drop="done name"`)
 	}
 	if !shown() {
 		t.Fatal("a working token's Renewed message is not shown")

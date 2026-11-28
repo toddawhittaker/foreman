@@ -75,15 +75,22 @@ func (sel selection) ticks(id string, s world.Snapshot) bool {
 }
 
 // tickNote tells what a shortcut button just ticked, so the reload that
-// follows it is not silent. n is the automatic snapshots now ticked.
+// follows it is not silent. n is the automatic snapshots now ticked. When
+// it ticked none, tickToast says so instead.
 func (sel selection) tickNote(n int) i18n.Msg {
-	switch {
-	case sel.automatic == "":
+	if sel.automatic == "" || n == 0 {
 		return i18n.Msg{}
-	case n == 0:
-		return i18n.M("worlds.snapshots.tick.none")
 	}
 	return i18n.M("worlds.snapshots.tick.some", "count", n)
+}
+
+// tickToast is the toast for a shortcut button that found nothing to tick:
+// it takes no room, so nothing on the page moves (DESIGN 6, "Toasts").
+func (sel selection) tickToast(n int) []Toast {
+	if sel.automatic == "" || n != 0 {
+		return nil
+	}
+	return []Toast{{Text: i18n.M("worlds.snapshots.tick.none")}}
 }
 
 // DeleteItem is one snapshot on the bulk confirmation page.

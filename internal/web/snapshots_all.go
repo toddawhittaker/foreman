@@ -58,8 +58,11 @@ type AllSnapshotsPage struct {
 	// them would free.
 	AddBytes  uint64
 	FreeBytes uint64
-	// TickNote says what a shortcut button ticked; zero when none was pressed.
+	// TickNote says what a shortcut button ticked; zero when none was pressed
+	// or it ticked nothing, which TickToasts say.
 	TickNote i18n.Msg
+	// TickToasts say a shortcut button found nothing to tick.
+	TickToasts []Toast
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
 	// Removed is how many snapshots the last bulk delete removed.
@@ -200,7 +203,7 @@ func (s *server) handleAllSnapshots(w http.ResponseWriter, r *http.Request, u st
 			automatic++
 		}
 	}
-	p.TickNote = sel.tickNote(automatic)
+	p.TickNote, p.TickToasts = sel.tickNote(automatic), sel.tickToast(automatic)
 	p.Deleted = deletedTimes(r.URL.Query()["deleted"])
 	p.Removed = removedCount(r)
 	s.page(w, r, http.StatusOK, u.Username, p)

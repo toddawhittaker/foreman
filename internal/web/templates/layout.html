@@ -111,12 +111,7 @@
 {{- end}}
 {{- /* Every page is one width, its frame lined up with the top bar (DESIGN 6). */}}
 <main id="main" tabindex="-1"{{with .LiveURL}} hx-ext="sse" sse-connect="{{.}}"{{end}}>
-{{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here (SPEC 12.10). */}}
-{{- with .Renewed}}
-<div class="message message--success" id="renewed-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{t "apitokens.done.renewed" "name" .}}</p>
-</div>
-{{- end}}
+{{- /* API tokens near or past expiry, one line each, with a one-click Renew that comes back here and says so in a toast (SPEC 12.10, DESIGN 6 "Toasts"). */}}
 {{- with .Banner}}
 <section class="message message--warning token-banner" id="token-banner" aria-labelledby="token-banner-heading">
   <h2 id="token-banner-heading" class="visually-hidden">{{t "apitokens.banner.heading"}}</h2>

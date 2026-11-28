@@ -441,7 +441,7 @@ func TestServerPageSwitchesAndSwitchesBack(t *testing.T) {
 	g.wantMissing("server page", body, "Switch to Bravo", "Switch to Alpha")
 	g.wantContains("worlds list", g.get(PathWorlds), `href="`+switchPath(b)+`"`)
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
 	body = g.waitPage(`id="server-title">Bravo <span`, "The worlds are switched, from Alpha to Bravo.")
 	g.wantContains("after the switch", body, `href="`+switchPath(a)+`" class="button" id="act-undo">Switch back to Alpha</a>`)
 }
@@ -455,7 +455,7 @@ func TestServerPageStaleStatusWithStoredResult(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
 	g.waitPage("The worlds are switched, from Alpha to Bravo.")
 
 	done := g.ctrl.Status(b)

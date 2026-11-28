@@ -206,7 +206,7 @@ func TestNetworkRefusalIsShown(t *testing.T) {
 
 var reAnnounce = regexp.MustCompile(`<div hx-swap-oob="innerHTML:#announcer">([^<]*)</div>`)
 
-var reToast = regexp.MustCompile(`<div class="toast toast--(\w+)" data-toast(?: data-toast-key="[^"]*")?>\s*(?:data: )?<p class="toast__text"><strong>[^<]*</strong> <span data-toast-text>(.*?)</span></p>`)
+var reToast = regexp.MustCompile(`<div class="toast toast--(\w+)" data-toast(?: data-toast-key="[^"]*")?(?: data-drop="[^"]*")?>\s*(?:data: )?<p class="toast__text"><strong>[^<]*</strong> <span data-toast-text>(.*?)</span></p>`)
 
 // DESIGN 7.5, A2: a live page reads out a state change, and a failed
 // operation in its place; a finished one's result is a toast, which reads
