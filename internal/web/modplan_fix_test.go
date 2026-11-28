@@ -43,7 +43,7 @@ func TestPlanConflictOffersItsFix(t *testing.T) {
 	}
 	wantIn(t, "fixed rows", planRows(body), "fp-clash 1.0.0", "fp-other 1.0.0")
 	wantIn(t, "fixed", plain(body), "Change the mods of Base?", "<dt>Install</dt>", "<dt>Remove</dt>",
-		`<input type="hidden" name="also-remove" value="fp-other">`, `class="button button--danger" id="act-apply">Change 2 mods</button>`, `<section class="confirm">`)
+		`<input type="hidden" name="also-remove" value="fp-other">`, `class="button button--danger" id="act-apply"><span data-label>Change 2 mods</span></button>`, `<section class="confirm">`)
 
 	// A redraw from the fix announces it and puts focus on the changes.
 	rec := g.harness.get(plan+"?also-remove=fp-other&draft="+tok+"&fixed=1", withCookie(g.cookie), withHeader("HX-Request", "true"))

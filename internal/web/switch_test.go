@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"testing"
 	"time"
@@ -50,7 +51,7 @@ func TestSwitchRunningWorld(t *testing.T) {
 		"Switch from Alpha to Bravo?", `name="from" value="`+a+`"`, `name="countdown"`, `value="60"`,
 		"save the game and stop Alpha", "Start the game on Bravo", `&#34;Before switch&#34;`, "button--danger", "Switch to Bravo")
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	body := g.waitPage(`id="server-title">Bravo <span`, running, "The worlds are switched")
 	g.wantMissing("server page", body, "Start server")
 	if err := g.waitResult(b, game.AuditSwitch); err != nil {
@@ -87,7 +88,7 @@ func TestSwitchStoppedWorld(t *testing.T) {
 		`<input type="checkbox" name="start" value="1" checked>`, "if the box below is ticked; otherwise leave the server stopped")
 	g.wantMissing("confirmation", form, `name="countdown"`, "Switch, leave stopped")
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}}))
 	g.waitPage(`id="server-title">Bravo <span`, stopped, "The worlds are switched")
 	if _, ok := g.fake.Daemon().Container(game.ContainerName(b)); ok {
 		t.Error("a stopped switch started the new world")
@@ -100,7 +101,7 @@ func TestSwitchStoppedWorldAndStart(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "start": {"1"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "start": {"1"}}))
 	g.waitPage(`id="server-title">Bravo <span`, running, "The worlds are switched")
 }
 
@@ -163,7 +164,7 @@ func TestSwitchAnyway(t *testing.T) {
 		`name="countdown"`, "To undo, switch back to Alpha")
 	g.wantMissing("confirmation", form, ">Switch to Bravo</button>", "Start Bravo after switching", "import the world again", "cannot add mods", "own mods folder")
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}, "choice": {"anyway"}, "seen": {seenIn(t, form)}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}, "choice": {"anyway"}, "seen": {seenIn(t, form)}}))
 	g.waitPage(`id="server-title">Bravo <span`, running, "The worlds are switched")
 	list, err := g.worlds.Snapshots(b)
 	if err != nil || len(list) != 2 {
@@ -179,7 +180,7 @@ func TestSwitchLeaveStopped(t *testing.T) {
 	b := g.newWorld("Bravo", "2.1.24-space-age-testmod.zip", true)
 	g.startGame(a)
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}, "choice": {"stopped"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}, "choice": {"stopped"}}))
 	g.waitPage(`id="server-title">Bravo <span`, stopped, "The worlds are switched")
 	if _, ok := g.fake.Daemon().Container(game.ContainerName(b)); ok {
 		t.Error("a switch that leaves the game stopped made a container for the new world")
@@ -239,7 +240,7 @@ func TestSwitchTellsTheOldPageToFollow(t *testing.T) {
 	buf, _, closeIt := g.collectEvents(a)
 	defer closeIt()
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}}))
 	g.waitPage(`id="server-title">Bravo <span`)
 	deadline := time.Now().Add(10 * time.Second)
 	for !strings.Contains(buf.String(), "event: moved") {
@@ -428,7 +429,7 @@ func TestSwitchFailsAfterPresenting(t *testing.T) {
 	g.startGame(a)
 	g.fake.SetRCONRefuse(game.ContainerName(b), true)
 
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"0"}}))
 	body := g.waitPage("The switch from Alpha to Bravo failed", "Switch back to Alpha", "Bravo is now the active world")
 	g.wantContains("server page", body, `id="server-title">Bravo <span`, `href="`+switchPath(a)+`"`)
 	g.wantMissing("server page", body, "The worlds are switched")
@@ -474,5 +475,14 @@ func TestSwitchRefusedWhenRunningChanged(t *testing.T) {
 	}
 	if got := g.fake.State().Containers; len(got) != 1 {
 		t.Errorf("containers %+v: the refused switch started a world", got)
+	}
+}
+
+// wantSwitchRedirect wants the Server page after a switch, which names a
+// load of its own to go on from (movedFrom).
+func (g *gameRig) wantSwitchRedirect(rep reply) {
+	g.t.Helper()
+	if loc := rep.Header.Get("Location"); rep.StatusCode != http.StatusSeeOther || !regexp.MustCompile(`^/\?moved=[1-9][0-9]*$`).MatchString(loc) {
+		g.t.Fatalf("got %d to %q, want 303 to /?moved=<load>\n%s", rep.StatusCode, loc, rep.body)
 	}
 }

@@ -237,7 +237,7 @@ startPreviewWithForm(() => {
     });
     if (!zip) return;
     zip.setAttribute("href", askFor(zip.href, "amounts", on));
-    zip.textContent = on ? zip.dataset.amounts : zip.dataset.plain;
+    (zip.querySelector("[data-label]") || zip).textContent = on ? zip.dataset.amounts : zip.dataset.plain;
   }
 
   // What the server holds, as it marked it on the section and as counts made since add to it.

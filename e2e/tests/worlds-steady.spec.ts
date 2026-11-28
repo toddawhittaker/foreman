@@ -184,7 +184,8 @@ test("the factory map with no picture starts at the tab row's edge", async ({ pa
   await page.setViewportSize({ width: 1920, height: 1080 });
   await page.goto("/worlds/base/map");
   const tabs = (await page.locator("main .pagehead > nav").boundingBox())!;
-  for (const s of ["main .factorymap__summary", "main .factorymap-mode"]) {
+  // The drawing's plate holds the summary, so the plate starts at the edge (DESIGN 8.22).
+  for (const s of ["main #factorymap-state", "main .factorymap-mode"]) {
     const b = page.locator(s);
     await expect(b, s).toHaveCount(1);
     expect((await b.boundingBox())!.x, s).toBe(tabs.x);

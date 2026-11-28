@@ -71,6 +71,7 @@ type gameRuns struct {
 	cancelled map[string]bool                 // worlds whose running action had its stop cancelled
 	toasted   map[string]map[string]toastMark // by world id, the result toasts a page has shown, by key (DESIGN 6)
 	toastSeq  uint64                          // counts page loads and marks; see toastMark
+	followed  map[uint64]bool                 // page loads a switch's reload went on from, each honoured once
 	changed   chan struct{}                   // closed and replaced when a result is stored, or when a snapshot is taken or deleted outside a task
 	closeOnce sync.Once
 }
@@ -102,7 +103,7 @@ type actionResult struct {
 
 func newGameRuns() *gameRuns {
 	g := &gameRuns{running: map[string]int{}, locking: map[string]int{}, results: map[string]actionResult{},
-		asides: map[string][]actionResult{}, cancelled: map[string]bool{}, toasted: map[string]map[string]toastMark{}, changed: make(chan struct{})}
+		asides: map[string][]actionResult{}, cancelled: map[string]bool{}, toasted: map[string]map[string]toastMark{}, followed: map[uint64]bool{}, changed: make(chan struct{})}
 	g.ctx, g.cancel = context.WithCancel(context.Background())
 	return g
 }
@@ -280,6 +281,41 @@ func shownByPage(marks map[string]toastMark) map[string]toastMark {
 		}
 	}
 	return out
+}
+
+// marksOf is the marks the page load named page made, by itself or by its
+// stream.
+func marksOf(marks map[string]toastMark, page uint64) map[string]toastMark {
+	out := map[string]toastMark{}
+	for k, m := range marks {
+		if m.Page == page {
+			out[k] = m
+		}
+	}
+	return out
+}
+
+// movedParam names the page load a Server page after a switch goes on from:
+// the page's own before live.js reloads it, or one the switch's redirect
+// takes for the admin's next page. The result toasts drop it, with
+// ownResultQuery.
+const movedParam = "moved"
+
+// movedFrom is the page load that r, a reload after a switch, goes on from.
+// Each is honoured once and must name a load already made, so a reload of
+// the same address, or a made-up one, is an ordinary load.
+func (g *gameRuns) movedFrom(r *http.Request) (uint64, bool) {
+	page, err := strconv.ParseUint(r.URL.Query().Get(movedParam), 10, 64)
+	if err != nil || page == 0 {
+		return 0, false
+	}
+	g.mu.Lock()
+	defer g.mu.Unlock()
+	if page >= g.toastSeq || g.followed[page] {
+		return 0, false
+	}
+	g.followed[page] = true
+	return page, true
 }
 
 // loadToasts names a page load before it reads the world's results and
@@ -499,7 +535,12 @@ func (s *server) handleServer(w http.ResponseWriter, r *http.Request, u store.Us
 	// The load after the admin's own action shows its toasts even when the
 	// asking page's stream had them first: Cancel stop answers only once its
 	// action ends, while that page is on its way here (DESIGN 6, "Toasts").
-	if followsOwnAction(r) {
+	// The reload a switch makes goes on from the page it reloads, which
+	// lost its toasts, so it shows those that page had not shown, even when
+	// another page, reloaded first, had them.
+	if from, ok := s.runs.movedFrom(r); ok {
+		p.Toasted = marksOf(p.Toasted, from)
+	} else if followsOwnAction(r) {
 		p.Toasted = shownByPage(p.Toasted)
 	}
 	// A result's toast shows once: the next load leaves it out, while its

@@ -3,6 +3,7 @@ package web
 import (
 	"context"
 	"net/http"
+	"strconv"
 
 	"github.com/toddawhittaker/foreman/internal/game"
 	"github.com/toddawhittaker/foreman/internal/i18n"
@@ -246,7 +247,11 @@ func (s *server) handleSwitch(w http.ResponseWriter, r *http.Request, u store.Us
 		return
 	}
 	by := actor(u)
-	s.beginOn(w, r, []string{from, to.ID}, true, func(ctx context.Context) actionResult {
+	// The page after the switch goes on from a load of its own that showed
+	// nothing, so it shows the Done toast even when another open Server page,
+	// reloaded by the switch first, had it (movedFrom; DESIGN 6, "Toasts").
+	after := PathServer + "?" + movedParam + "=" + strconv.FormatUint(s.runs.loadToasts(), 10)
+	s.beginTo(w, r, after, []string{from, to.ID}, true, func(ctx context.Context) actionResult {
 		err := s.game.Switch(ctx, from, to.ID, by, stop, opts, start)
 		res := s.finish(from, game.AuditSwitch, err)
 		res.Target, res.From = to.ID, from

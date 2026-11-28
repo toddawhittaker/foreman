@@ -74,7 +74,7 @@
   </ul>
   {{- else}}
   {{template "empty" (empty "worlds" (t "favorites.empty") "favorites-empty")}}
-  <div class="actions"><a href="{{worldsPath}}">{{t "favorites.empty.link"}}</a></div>
+  <div class="actions" id="favorites-empty-link"><a href="{{worldsPath}}">{{t "favorites.empty.link"}}</a></div>
   {{- end}}
 </section>
 <div class="split__rail">

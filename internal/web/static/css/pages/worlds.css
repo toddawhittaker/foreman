@@ -421,15 +421,21 @@ time[data-age-only] .time-short {
   }
 
   .snapshot-list:has(.row-actions) thead tr {
-    padding-block: 0 var(--space-2);
+    padding-block: 0;
   }
 
   .snapshot-list:has(.row-actions) tbody tr:last-child {
     border-block-end: 0;
   }
 
-  .snapshot-list:has(.row-actions) :is(th, td) {
+  /* A column head keeps the shared head's padding below it (tables.css). */
+  .snapshot-list:has(.row-actions) :is(th:not([scope="col"]), td) {
     padding: 0;
+    border: 0;
+  }
+
+  .snapshot-list:has(.row-actions) th[scope="col"] {
+    padding-inline: 0;
     border: 0;
   }
 
@@ -1610,5 +1616,11 @@ main:has(.import-pick) form:is(.import-upload, .import-world-file) > p:not([clas
   :is(.import-upload, .import-folder) > details.disclosure {
     grid-column: 1;
   }
+}
+
+/* Favorites with none yet: the way to the worlds stands centred under the
+   empty state's drawing and sentence, as one block (DESIGN 7.3). */
+#favorites-empty-link {
+  justify-content: center;
 }
 }

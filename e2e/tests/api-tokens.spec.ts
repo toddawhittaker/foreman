@@ -54,8 +54,8 @@ test("create a token, see the secret once, renew and revoke it", { tag: "@looks"
   sql(foreman, "UPDATE api_tokens SET period_start = ? WHERE id = ?", before - 10 * 86400, id);
   await page.reload();
   await page.locator("#my-tokens").getByRole("button", { name: "Renew Claude" }).click();
-  await expect(page.locator("#renewed-message")).toHaveText("Done: Renewed Claude. It works for another 30 days.");
-  await expect(page.locator("#renewed-message")).toBeFocused();
+  // The result is a toast, which takes no focus (DESIGN 6, "Toasts").
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Renewed Claude. It works for another 30 days.");
   expect(Number(sql(foreman, "SELECT period_start FROM api_tokens WHERE id = ?", id)[0].period_start)).toBeGreaterThanOrEqual(before);
 
   await page.locator("#my-tokens").getByRole("link", { name: /^Revoke Claude/ }).click();
@@ -82,8 +82,9 @@ test("the banner appears near expiry and Renew comes back to the same page", asy
   await expect(banner).toContainText("Your API token Claude expires at");
   await checkPage(page);
   await banner.getByRole("button", { name: "Renew Claude" }).click();
-  await expect(page).toHaveURL("/worlds?done=renewed&name=Claude");
-  await expect(page.locator("#renewed-message")).toHaveText("Done: Renewed Claude. It works for another 30 days.");
+  // Once its toast shows, the address drops the result (DESIGN 6, "Toasts").
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Renewed Claude. It works for another 30 days.");
+  await expect(page).toHaveURL("/worlds");
   await expect(page.locator("#token-banner")).toHaveCount(0);
 
   sql(foreman, "UPDATE api_tokens SET period_start = ? WHERE name = 'Claude'", now - 40 * 86400);

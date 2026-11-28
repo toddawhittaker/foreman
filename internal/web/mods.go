@@ -1500,6 +1500,33 @@ func (p ModPlanPage) ButtonRecommended() i18n.Msg {
 	return i18n.Msg{}
 }
 
+// ButtonRoom is the confirming button's longest words while the plan
+// offers mods to tick: its label at a two-digit count, the plural form most
+// languages write longest, then the recommended words when an offer is
+// recommended. The button keeps that box, so ticking an offer never widens
+// it and moves Cancel beside it (DESIGN 6, "Controls stay put"). Empty when
+// nothing is offered, as then the label cannot change.
+func (p ModPlanPage) ButtonRoom() []i18n.Msg {
+	if len(p.Plan.Optional) == 0 {
+		return nil
+	}
+	const wide = 88
+	room := []i18n.Msg{roomCount(p.Button(), wide)}
+	if p.installLabel() && slices.ContainsFunc(p.Plan.Optional, func(o mods.Offer) bool { return o.Recommended }) {
+		room = append(room, i18n.M("mods.plan.button.recommended", "count", wide))
+	}
+	return room
+}
+
+// roomCount is m with its count set to n.
+func roomCount(m i18n.Msg, n int) i18n.Msg {
+	args := maps.Clone(m.Args)
+	if _, ok := args["count"]; ok {
+		args["count"] = n
+	}
+	return i18n.Msg{Key: m.Key, Args: args}
+}
+
 // installLabel says the button is the plain "Install" one.
 func (p ModPlanPage) installLabel() bool {
 	if p.extraKinds() || p.Form.Kind == mods.KindUpdate && len(p.Form.Versions) > 0 {

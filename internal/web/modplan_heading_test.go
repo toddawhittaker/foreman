@@ -72,3 +72,26 @@ func TestPlanInstallButtonNamesTheRecommendedCount(t *testing.T) {
 		t.Errorf("button count without recommended = %v, want 2", got.Args["count"])
 	}
 }
+
+// DESIGN 6, "Controls stay put": while the plan offers a mod to tick, the
+// button holds the room of its longest words, so ticking never widens it
+// and moves Cancel; with nothing to tick it holds none.
+func TestPlanButtonRoomHoldsItsLongestWords(t *testing.T) {
+	p := ModPlanPage{World: world.Summary{ID: "base", Name: "Base"}, Form: planForm{Kind: mods.KindInstall, Names: []string{"a"}}}
+	p.Plan.Changes = []mods.Change{{Name: "a", To: "1.0.0", Action: mods.ActInstall, Why: mods.Reason{Code: mods.WhyAsked}}}
+	if got := p.ButtonRoom(); got != nil {
+		t.Errorf("nothing offered: room = %+v, want none", got)
+	}
+	p.Plan.Optional = []mods.Offer{{Name: "b", Of: "a"}}
+	room := p.ButtonRoom()
+	if len(room) != 1 || english(room[0]) != "Install 88 mods" {
+		t.Errorf("optional offered: room = %+v, want the install label at 88", room)
+	}
+	if english(p.Button()) != "Install 1 mod" {
+		t.Errorf("the room leaves the label alone: %q", english(p.Button()))
+	}
+	p.Plan.Optional = append(p.Plan.Optional, mods.Offer{Name: "c", Of: "a", Recommended: true})
+	if room := p.ButtonRoom(); len(room) != 2 || room[1].Key != "mods.plan.button.recommended" || room[1].Args["count"] != 88 {
+		t.Errorf("recommended offered: room = %+v, want the recommended words too", room)
+	}
+}

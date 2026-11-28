@@ -21,9 +21,9 @@
     {{- end}}
     <div class="webhook-form__presets">
     {{- range .Presets}}
-    <div class="webhook-preset">
+    <div class="choice-card">
     <label class="check"><input type="radio" name="preset" value="{{.Value}}" id="preset-{{.Value}}"{{if .Checked}} checked{{end}} aria-describedby="preset-{{.Value}}-hint"> {{msg .Name}}</label>
-    <p class="hint" id="preset-{{.Value}}-hint">{{msgHTML .Hint}}</p>
+    <p class="hint choice-card__hint" id="preset-{{.Value}}-hint">{{msgHTML .Hint}}</p>
     </div>
     {{- end}}
     </div>

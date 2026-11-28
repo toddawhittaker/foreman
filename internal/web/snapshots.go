@@ -46,8 +46,11 @@ type SnapshotsPage struct {
 	FreeBytes uint64
 	// Ticked names the snapshots whose boxes start ticked.
 	Ticked map[string]bool
-	// TickNote says what a shortcut button ticked; zero when none was pressed.
+	// TickNote says what a shortcut button ticked; zero when none was pressed
+	// or it ticked nothing, which TickToasts say.
 	TickNote i18n.Msg
+	// TickToasts say a shortcut button found nothing to tick.
+	TickToasts []Toast
 
 	Label      string
 	LabelError i18n.Msg
@@ -199,7 +202,7 @@ func (s *server) snapshotsPage(r *http.Request, sum world.Summary) (SnapshotsPag
 			automatic++
 		}
 	}
-	p.TickNote = sel.tickNote(automatic)
+	p.TickNote, p.TickToasts = sel.tickNote(automatic), sel.tickToast(automatic)
 	// A box ticked by the shortcut must be on screen to be reviewed.
 	if len(list) > maxListRows && r.URL.Query().Get("all") == "" && sel.automatic == "" {
 		list, p.More = list[:maxListRows], true

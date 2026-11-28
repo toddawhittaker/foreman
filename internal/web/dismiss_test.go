@@ -132,7 +132,7 @@ func TestDismissOverHTTP(t *testing.T) {
 	g := newGameRig(t, image21)
 	a := g.newWorld("Alpha", fixtureNoSA, false)
 	b := g.newWorld("Bravo", fixtureNoSA, false)
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "countdown": {"0"}}))
 	body := g.waitPage("The worlds are switched, from Alpha to Bravo.", `id="act-dismiss"`)
 	m := dismissAt.FindStringSubmatch(body)
 	if m == nil {
@@ -150,7 +150,7 @@ func TestDismissOverHTTP(t *testing.T) {
 	g.wantMissing("after the close", g.get(PathServer), "The worlds are switched", "Switch back to Alpha", "act-dismiss")
 
 	// A script request gets no body and the same effect.
-	g.wantRedirectHome(g.post(switchPath(a), url.Values{"from": {b}, "countdown": {"0"}}))
+	g.wantSwitchRedirect(g.post(switchPath(a), url.Values{"from": {b}, "countdown": {"0"}}))
 	body = g.waitPage("The worlds are switched, from Bravo to Alpha.", `id="act-dismiss"`)
 	m = dismissAt.FindStringSubmatch(body)
 	rep := g.do(http.MethodPost, gamePath(a, "dismiss-result"), url.Values{"at": {m[1]}}, http.Header{"Cookie": {g.cookie.String()}, "HX-Request": {"true"}})

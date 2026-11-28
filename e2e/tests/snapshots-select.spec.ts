@@ -14,7 +14,7 @@ async function takeSnapshot(page: Page, label: string) {
 }
 
 // SPEC 17.4: Select all automatic reloads the page, so it says what it ticked
-// and puts focus on that line.
+// and puts focus on that line; when it ticked none, a toast says so.
 test("Select all automatic says what it ticked and moves focus to it", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   seedWorld(foreman);
@@ -23,8 +23,9 @@ test("Select all automatic says what it ticked and moves focus to it", { tag: "@
 
   await page.goto("/snapshots");
   await page.getByRole("button", { name: "Select all automatic", exact: true }).click();
-  await expect(page.locator("#tick-note")).toHaveText("There are no automatic snapshots to tick.");
-  await expect(page.locator("#tick-note")).toBeFocused();
+  // Nothing to tick: a toast says so, which takes no room and no focus (DESIGN 6, "Toasts").
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: There are no automatic snapshots to tick.");
+  await expect(page.locator("#tick-note")).toHaveCount(0);
 
   // A restore takes a "Before restore" snapshot, which is automatic.
   await page.goto("/worlds/second/snapshots");

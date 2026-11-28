@@ -121,7 +121,8 @@
     <p class="hint preview-one-color" id="preview-one-color">{{t "mapgen.preview.one_color"}}{{if gt (len $.Preview.Pictures) 1}} {{t "mapgen.preview.one_color_planets"}} {{range $i, $p := .}}{{if $i}}{{t "mapgen.list_sep"}}{{end}}{{if .Foreign}}<span translate="no">{{msg .Name}}</span>{{else}}{{msg .Name}}{{end}}{{end}}{{end}}</p>
     {{- end}}
     {{- if gt (len .Planets) 1}}
-    <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}" data-planets="{{.ZipPlanets}}"{{if .TerritoriesHeld}} data-territories-held{{end}}>{{t "worlds.generate.preview.download_all"}}</a></p>
+    {{- /* data-room, its longer words, holds the link's box, so a word wrapped by the amounts never moves what is below (DESIGN 6). */}}
+    <p><a href="{{.ZipPath}}" class="download" download data-plain="{{t "worlds.generate.preview.download_all"}}" data-amounts="{{t "worlds.generate.preview.download_all_amounts"}}" data-room="{{t "worlds.generate.preview.download_all_amounts"}}" data-planets="{{.ZipPlanets}}"{{if .TerritoriesHeld}} data-territories-held{{end}}><span data-label>{{t "worlds.generate.preview.download_all"}}</span></a></p>
     {{- end}}
     {{/* Shown under a download while the script counts what it asks for and nothing holds yet:
          which planet of how many, Cancel, and on a failure the planet named with Try again and,

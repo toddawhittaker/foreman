@@ -766,8 +766,9 @@ one place across its states and its sibling pages.
 - **The page header** has one shape on every page, so each part sits at one
   place: the breadcrumb (or the context row) 4 px over a 28 px title; the
   page's own buttons at the end of the title's row; under the title the
-  page's tab row or a flow's step bar, 16 px below it; and the first plate
-  16 px under the tabs, so content starts about 190 px from the top of the
+  page's tab row or a flow's step bar, 16 px below it; and the first part
+  drawn under the header 16 px under it, with or without a tab row (a
+  hidden live region or an empty activity block does not count), so content starts about 190 px from the top of the
   window. A page that has a parent (a world's page, a settings page, a
   favorite, the Server view while a world is live) opens with the
   breadcrumb (8.1); a page with none (All worlds, All snapshots, the Server
@@ -837,8 +838,9 @@ one place across its states and its sibling pages.
   has a breadcrumb that leads back.
   - **The tab row** is a 44 px row of underline tabs: `text-muted`, weight
     500, `--space-4` of side padding (none before the first tab), the
-    current one `heading` at weight 600 with a 3 px `selected` underline
-    drawn as a border, so it survives forced colours. Under it a 1 px
+    current one `heading` with a 3 px `selected` underline drawn as a
+    border, so it survives forced colours. It is not bolder, so every tab
+    keeps its place and width on each of its sibling pages. Under it a 1 px
     `line-strong` rule runs the column's full width. A tab under the pointer
     takes `heading`.
   - **Below 40rem** the Server, Worlds and world rows are an even grid of
@@ -1331,7 +1333,10 @@ the block padding is `--space-2` so a two-line label is not cramped.
   colours gets the native control back, which draws the mixed state itself. A segment's or a tab's radio is
   hidden by its own rule. The
   input sits inside its `label`, and the label is a flex row with
-  `min-block-size: var(--target-min)`, so the whole row is the target. The
+  `min-block-size: var(--target-min)`, so the whole row is the target.
+  The box sits on the words' first line, and that line sits where a
+  one-line label's does, so a label that wraps starts level with its
+  neighbours. The
   box styling above never applies to them, even inside a
   `div.field`: the `.field` rule excludes `[type="checkbox"]` and
   `[type="radio"]`, so the input stays 1.25rem square.
@@ -2016,10 +2021,12 @@ it a card or a plate alike; the class is `card` or `panel`.
   it is told apart by more than colour. A segment with a count shows it
   inside. Focus draws the usual ring 1 px outside the segment.
 - **Foldouts** (`details.disclosure`). One style for every foldout; the
-  class stays `disclosure`. The summary is a `list-item` with the browser's own triangle (`::marker`) at
-  its start, coloured `text-muted` so orange stays for the primary action,
-  the current place and focus: it points ahead when closed and down when
-  open. The label is `heading` at weight 600, with no face, border or
+  class stays `disclosure`. The summary is the label followed by the
+  disclosure chevron, the one arrow every disclosure, menu and disclosure
+  button draws (`controls.css`, from `--i-chevron`, 16 px, in `text-muted`,
+  so orange stays for the primary action, the current place and focus):
+  it points down when closed and up when open. No disclosure
+  shows the browser's own triangle. The label is `heading` at weight 600, with no face, border or
   shadow at rest. Under a pointer that can hover (`@media (hover: hover)`) the row fills with
   `secondary-hover` at `--radius`; its side padding of `--space-1` and a matching negative
   margin keep the words still. Focus keeps the normal ring. With a fine
@@ -2029,7 +2036,7 @@ it a card or a plate alike; the class is `card` or `panel`.
   so stacked rows such as Generate's planets and the raw settings read as
   a list. "Emergency actions" is the exception: a small framed menu button
   whose opened area is red (section 6). The plan list's summary on the mod
-  portal keeps its 44 px bar and draws its own triangle, without the
+  portal keeps its 44 px bar and the same chevron, without the
   compact size or the hover fill. Used for "Or start anyway" (7.4), the steps that were not
   run (7.6), "N other mods stay as they are" and the upload and replace
   forms (8.11), "Replace the account" (8.11), the version not in the list
@@ -2689,11 +2696,12 @@ link: step 2 goes "Back to the world", step 3 "Back to the mods", step 4
 "Back to mod settings", or "Back to the mods" when step 3 has nothing. Step
 1 has no Back, so its Cancel leads the bar. Step 1 uses the `form-foot`
 partial (7.1). Steps 3 and 4 write the same `actions form-foot` bar out by
-hand, because the partial has no Back slot. Step 2's Mods tab ends with a
-bar of the same look as its last block (`flow-foot`). Skip links stay where they
+hand, because the partial has no Back slot. Step 2's Mods tab ends with the
+same `actions form-foot` bar as its last block. Skip links stay where they
 were, as secondary actions. Step 2's review of the plan ends with the same
-`flow-foot` bar, across both of the review's columns and out to its box's
-edges.
+bar, across both of the review's columns and out to its box's edges. Step
+4's form is a plate, as step 1's is, so on every step Back and the primary
+action stand at the same x (7.1).
 
 **Step 1**, `GET /generate`: one `h1` with a one-line hint, then one form,
 in this order:
@@ -2784,8 +2792,9 @@ and 8.8. Its form id is still `generate-form`. In this order:
    game line is refused with a link to the world's page. On a wide form
    (a map section at least 62rem wide) it shares one row with the preset
    and the seed, and opens to a full row under them (item 4).
-4. The preset select with "[modified]" (the game's word) and a quiet
-   "Reset to defaults" button after it; the seed with a "Random seed"
+4. The preset select, filling its column like every field, with a line
+   under it for "[modified]" (the game's word) and a quiet "Reset to
+   defaults" button; the seed with a "Random seed"
    button; then the groups of 8.7.
 5. The preview slot (8.8), beside the settings on a wide screen (below).
 6. One achievements summary (below), then the footer: Back (to step 3,
@@ -2842,9 +2851,9 @@ preset. "Reset to defaults" is the one reset for the whole world (SPEC
 default is chosen, and puts the default preset and its values back,
 keeping the seed. Their room is kept while they are not shown (the
 word and the button are there but invisible, and out of the
-accessibility tree), so the row wraps the same way either way, and
-nothing below it, such as the slider being dragged, moves when they come
-or go. On a phone they hold a line of their own under the select. Reset is a submit button to the refresh route, so
+accessibility tree), and their line under the select is one target tall
+whether or not they show, so nothing below it, such as the slider being
+dragged, moves when they come or go (DESIGN 6, "Controls stay put"). Reset is a submit button to the refresh route, so
 it also works without script; with htmx it redraws the tabs and the
 preset select in place. It asks nothing first, because nothing saved
 changes; instead "Undo reset" (quiet, script only) takes its place in
@@ -3118,7 +3127,12 @@ close the view, the tab, the setting, and the picture again).
   its words longer, moves neither the link nor the button. The line wraps
   only when the pane is narrow; the button and its toggletip wrap together, so the icon stays beside the
   button, and the picture always leaves room for the second row. The
-  "Download all drawn planets (zip)" link has its own line below both.
+  "Download all drawn planets (zip)" link has its own line below both and
+  keeps its longer label's room the same way. Below the two columns, where
+  the preview stands above the settings, the territories' line under
+  their picture and the amounts' line at the preview's foot keep their
+  room from the start, ticked or not, so ticking either box moves nothing
+  below.
 - **Size.** A "Preview size" setting of steps (DESIGN 8.7: a slider on a
   wide panel, a select of 17 sizes elsewhere) above the section, outside
   the part a reply replaces: 1024 to 3072 tiles square in steps of 128,
@@ -3575,7 +3589,8 @@ made on one sub-page are kept in the tab's session storage and put back
 on the next, so one "Preview changes" covers every section. The foot
 bar's note counts them ("3 unsaved changes, kept while you move between
 sections.", with an orange dot), and the segmented control marks each
-sub-page that holds one with a dot. Saving or Cancel drops the draft. Without
+sub-page that holds one with a dot in its top end corner, inside the
+segment's padding, so the mark moves no segment. Saving or Cancel drops the draft. Without
 script each sub-page saves on its own.
 
 **The form** (`GET /worlds/{id}/settings`) is one `form.panel` of
@@ -4029,7 +4044,11 @@ sync, upload) has the same shape, changes first. In order:
   primary in a box that keeps the confirmation's frame with a 4 px `info`
   (blueprint blue) top edge in place of the hazard stripe
   (`confirm--plain`), on a running world too: the steps say the restart.
-  Cancel is a ghost button just before the confirm button (7.1). "This
+  Cancel is a ghost button just before the confirm button (7.1). While
+  the plan offers a mod to tick, the confirm button keeps the box of its
+  longest label (`data-room`: the label at a two-digit count, with the
+  recommended words when one is offered), so ticking never widens it and
+  Cancel stays put (DESIGN 6, "Controls stay put"). "This
   will:" is a station track: each step a numbered 28 px square plate
   (`raised`, 1 px `border`, the number in Plex Mono) joined to the next
   by a 2 px `line` rail; it is still an ordered list. On a box at least
@@ -4984,10 +5003,13 @@ the "When to draw" panel (radios Automatic, Manual and Off with hints, the
   From 64rem the page is a map viewer: the map is as tall as the window
   leaves (the window less 19rem, between 22rem and 64rem) and exactly as
   wide as its picture, so it has no empty bands, and the controls stand in a
-  column beside it (22rem or wider, at most 40rem): the drawn line, "Draw
-  factory map" (the page's primary button), the surfaces as one segmented
-  control (7.8), the layers as a legend plate in two columns, and the
-  download and "When to draw" as a plate. The frame has the `deep` face and
+  column beside it (22rem or wider): the drawn line, the surfaces as one
+  segmented control (7.8), the layers as a legend plate in two columns,
+  and the download. "Draw factory map" (the page's primary button) keeps
+  the top row across both, where it stood before the first drawing. The
+  page is its tab row's width and has two plates: the drawing (Draw, the
+  state or empty sentence, the map and its controls) and, under it,
+  "When to draw". The frame has the `deep` face and
   focus. It is named by the surface heading and described by the key line
   "Keys: arrows pan, + − zoom, 0 fit. Drag to pan, tap to center." Zoom out,
   Fit and Zoom in are one joined cluster of icon buttons (one `raised` frame

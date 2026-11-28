@@ -354,8 +354,26 @@
   max-inline-size: none;
 }
 
+/* The buttons may wrap under each other on a narrow screen at large text;
+   both slots are always there, so wrapping moves nothing between states. */
 .audit-filter > .actions {
-  flex: none;
+  flex: 0 1 auto;
+  flex-wrap: wrap;
+  min-inline-size: 0;
+}
+
+/* A control the audit log has no use for right now keeps its place unseen,
+   so the row around it does not move (DESIGN 6, "Controls stay put"). */
+.audit-slot {
+  visibility: hidden;
+}
+
+/* The pager: Newer then Older in two fixed slots, side by side where they
+   fit and one under the other on a narrow screen at large text. */
+.audit-pager {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
 }
 
 /* The Audit log is one card like its sibling settings pages: the filter
@@ -978,26 +996,6 @@
   gap: var(--space-3);
 }
 
-.webhook-preset {
-  display: grid;
-  gap: var(--space-1);
-  padding: var(--space-3);
-  border: var(--border-width) solid var(--color-line);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-}
-
-.webhook-preset:has(input:checked) {
-  border-color: var(--color-selected);
-  box-shadow: inset 3px 0 0 var(--color-selected);
-  background: var(--color-raised);
-}
-
-.webhook-preset > .hint {
-  margin: 0;
-  padding-inline-start: calc(1.25rem + var(--space-3));
-}
-
 .webhook-form__event-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 16rem), 1fr));
@@ -1043,6 +1041,20 @@
 
   .webhook-list > li > .facts ~ .actions .button {
     inline-size: auto;
+  }
+}
+
+/* Below the wide row every webhook lays out alike, as the Users list does:
+   its title and facts on top, then Edit and Delete under them, as wide as
+   the row. The row is a plain stack here, so the world list's column for
+   Switch does not apply. */
+@media (max-width: 63.99rem) {
+  ul.webhook-list > li {
+    display: flow-root;
+  }
+
+  ul.webhook-list > li > * + * {
+    margin-block-start: var(--space-2);
   }
 }
 
@@ -1126,9 +1138,11 @@ form.general-grid.setting-rows > .setting-row {
   border-block-start: var(--border-width) solid var(--color-line);
 }
 
-/* The tiles have no row gap, so the note keeps the hint's gap above the first. */
+/* The tiles have no row gap, so the note's own padding keeps the 16 px a
+   form's gap gives it elsewhere; its margin stays 0 like every other form's. */
 form.general-grid.setting-rows > .required-note {
-  margin: 0 0 var(--space-3);
+  margin: 0;
+  padding-block-end: var(--space-4);
 }
 
 /* Each tile ends in its own padding, so the bar needs no gap of its own. */
@@ -1194,9 +1208,10 @@ form.general-grid.setting-rows .setting-row__head .hint {
   gap: var(--space-5);
 }
 
+/* Its addresses are fields of one form, 16 px apart like any other's (DESIGN 7.2). */
 .token-use .exchange {
   display: grid;
-  gap: var(--space-5);
+  gap: var(--space-4);
 }
 
 .token-use .field {
@@ -1240,7 +1255,11 @@ form.general-grid.setting-rows .setting-row__head .hint {
   }
 }
 
-.scope-card {
+/* ==== One radio card (DESIGN 7.2), for the webhook Service and the API
+   token Scope: a framed choice whose whole face picks it, the radio at the
+   card's top start, its description under the name. Chosen, it takes the
+   accent face and a heavier bottom edge. Only Settings has it. */
+.choice-card {
   position: relative;
   display: grid;
   align-content: start;
@@ -1251,36 +1270,37 @@ form.general-grid.setting-rows .setting-row__head .hint {
   border-radius: var(--radius);
 }
 
-/* The whole card picks the scope; the label alone stays the radio's name. */
-.scope-card > label::after {
+/* The whole card picks the choice; the label alone stays the radio's name. */
+.choice-card > label::after {
   content: "";
   position: absolute;
   inset: 0;
 }
 
-.scope-card > label {
+.choice-card > label {
   min-block-size: 1.75rem;
   font-weight: 600;
 }
 
 /* The radio itself sits above the card-wide target, so a press on it lands
    on it. */
-.scope-card > label > input {
+.choice-card > label > input {
   position: relative;
   z-index: 1;
 }
 
-.scope-card:hover {
+.choice-card:hover {
   border-color: var(--color-border);
 }
 
-.scope-card:has(input:checked) {
+.choice-card:has(input:checked) {
   background: var(--color-accent-bg);
   border-color: var(--color-selected);
   box-shadow: inset 0 -2px 0 var(--color-selected);
 }
 
-.scope-card > .hint {
+/* The description lines up with the name, past the radio. */
+.choice-card__hint {
   margin: 0;
   padding-inline-start: calc(1.25rem + var(--space-2));
 }

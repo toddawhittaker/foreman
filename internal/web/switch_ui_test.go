@@ -62,7 +62,7 @@ func TestMovedEventCarriesTheSentence(t *testing.T) {
 	b := g.newWorld("<i>Bravo</i>", fixtureNoSA, false)
 	buf, _, closeIt := g.collectEvents(a)
 	defer closeIt()
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}}))
 	deadline := time.Now().Add(10 * time.Second)
 	for !strings.Contains(buf.String(), "event: moved\ndata: ") {
 		if time.Now().After(deadline) {
@@ -87,7 +87,7 @@ func TestWorldPageSaysWhyThereIsNoSwitch(t *testing.T) {
 	g.wantContains("other world", g.get(worldPath(b)), "Switch to this world", "Foreman snapshots both worlds first, then starts this one.")
 
 	g.startGame(a)
-	g.wantRedirectHome(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"30"}}))
+	g.wantSwitchRedirect(g.post(switchPath(b), url.Values{"from": {a}, "running": {"1"}, "countdown": {"30"}}))
 	g.waitPage("Switching from Alpha to Bravo")
 	busy := g.get(worldPath(b))
 	g.wantContains("busy world", busy, "Switching from Alpha to Bravo.", `href="/"`)

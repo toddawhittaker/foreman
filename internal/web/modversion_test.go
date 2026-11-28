@@ -93,7 +93,7 @@ func TestChangeVersionGoesBack(t *testing.T) {
 		t.Fatalf("status %d\n%s", code, body)
 	}
 	wantIn(t, "back rows", planRows(body), "ver-b 1.1.0 to 1.0.0")
-	wantIn(t, "back", plain(body), "<dt>Downgrade</dt>", `id="act-apply">Change 1 mod</button>`, "Take a snapshot")
+	wantIn(t, "back", plain(body), "<dt>Downgrade</dt>", `id="act-apply"><span data-label>Change 1 mod</span></button>`, "Take a snapshot")
 	g.wantRedirectHome(g.post(plan, withVersions(planValues(t, body), body)))
 	if err := g.waitResult(id, game.AuditMods); err != nil {
 		t.Fatal(err)

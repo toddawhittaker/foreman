@@ -72,6 +72,15 @@
   // came; when there was none, the stored value is empty and the next page
   // says the standard sentence in its own language.
   const movedKey = "foreman-moved";
+  // The load a page after a switch goes on from ("moved") counts once, on
+  // the server's answer, so it leaves the address at once.
+  {
+    const here = new URL(location.href);
+    if (here.searchParams.has("moved")) {
+      here.searchParams.delete("moved");
+      history.replaceState(history.state, "", here.pathname + here.search + here.hash);
+    }
+  }
   document.addEventListener("htmx:sseMessage", (e) => {
     if (e.target.getAttribute("sse-swap") !== "moved") return;
     try {
@@ -79,7 +88,16 @@
     } catch (_) {
       // Without storage the page still reloads, only silently.
     }
-    location.reload();
+    // The reload drops this page's toasts, and another open page, reloaded
+    // first, may have shown the switch's Done toast. The reload names this
+    // page's load, the stream's "toasted", so it shows the toasts this page
+    // had not, once; they then drop the parameter (DESIGN 6, "Toasts").
+    const next = new URL(location.href);
+    const stream = document.getElementById("main")?.getAttribute("sse-connect");
+    const seq = stream ? new URL(stream, location.href).searchParams.get("toasted") : null;
+    next.search = seq ? `?moved=${seq}` : "";
+    if (next.href === location.href) location.reload();
+    else location.replace(next.href);
   });
 
   // After a reload that followed a switch, focus goes to the page's heading,
