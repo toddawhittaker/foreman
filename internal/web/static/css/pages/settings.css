@@ -1138,11 +1138,12 @@ form.general-grid.setting-rows > .setting-row {
   border-block-start: var(--border-width) solid var(--color-line);
 }
 
-/* The tiles have no row gap, so the note's own padding keeps the 16 px a
-   form's gap gives it elsewhere; its margin stays 0 like every other form's. */
+/* The tiles have no row gap, so the note's own padding keeps the hint's
+   12 px gap above the first tile, where it has always stood; its margin
+   stays 0 like every other form's. */
 form.general-grid.setting-rows > .required-note {
   margin: 0;
-  padding-block-end: var(--space-4);
+  padding-block-end: var(--space-3);
 }
 
 /* Each tile ends in its own padding, so the bar needs no gap of its own. */
