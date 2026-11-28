@@ -1,14 +1,11 @@
 {{define "title"}}{{t "server.update.title" "world" .Page.World.Name}}{{end}}
 
+{{define "head-title"}}{{with .Page}}{{t "server.update.heading" "world" .World.Name "version" .World.GameVersion}}{{end}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<h1 id="confirm-heading">{{t "server.update.heading" "world" .World.Name "version" .World.GameVersion}}</h1>
+{{template "pagehead" $}}
 {{template "summary" .Problems}}
-{{- if not .Refusal.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .Refusal}}</p>
-</div>
-{{- end}}
 <section class="confirm">
   <form method="post" action="{{.Path}}" novalidate>
     {{- if .Target}}

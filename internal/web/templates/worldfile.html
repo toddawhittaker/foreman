@@ -1,18 +1,15 @@
 {{define "title"}}{{t "worldimport.title"}}{{end}}
 
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .ImportPath (t "worlds.import.title") "" (t "worldimport.title"))}}{{end}}{{end}}
+{{define "head-title"}}{{t "worldimport.title"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .ImportPath (t "worlds.import.title") "" (t "worldimport.title"))}}
-<h1>{{t "worldimport.title"}}</h1>
+{{template "pagehead" $}}
 <p class="page-intro">{{t "worldimport.intro"}}</p>
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="world-file-heading">
   <h2 id="world-file-heading">{{t "worldimport.heading"}}</h2>
   {{template "summary" .Problems}}
-  {{- if not .Error.IsZero}}
-  <div class="message message--error" id="world-file-refusal" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
-    <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-  </div>
-  {{- end}}
   <dl class="facts">
     {{- with .ForemanVersion}}
     <div><dt>{{t "worldimport.fact.made_by"}}</dt><dd><code>{{.}}</code></dd></div>
@@ -53,10 +50,7 @@
   </div>
   {{- end}}
   {{- end}}
-  <div class="actions">
-    <button type="submit" class="button button--primary" id="act-import-world-file">{{t "worldimport.button"}}</button>
-    <a href="{{.ImportPath}}">{{t "worlds.cancel"}}</a>
-  </div>
+  {{template "form-foot" (formFoot "submit" (t "worldimport.button") "submitID" "act-import-world-file" "cancel" .ImportPath "cancelText" (t "worlds.cancel"))}}
 </form>
 {{end}}
 {{- end}}

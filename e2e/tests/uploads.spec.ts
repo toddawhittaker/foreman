@@ -35,7 +35,7 @@ test("the Saves tab upload is a drop zone that uploads the dropped save", async 
   await dropFile(page, "save-file", [{ name: "dropped.zip", body: makeZip({ "level/level.dat0": "from elsewhere" }) }]);
   await expect(zone.locator(".dropzone__file")).toContainText("Chosen: dropped.zip");
   await page.getByRole("button", { name: "Upload save" }).click();
-  await expect(page.getByText("Done: Uploaded dropped.zip.")).toBeVisible();
+  await expect(page.locator("#toasts").getByText("Done: Uploaded dropped.zip.")).toBeVisible();
   expect(readdirSync(join(foreman.dataDir, "worlds", "base", "saves")).sort()).toEqual(["base.zip", "dropped.zip"]);
 });
 

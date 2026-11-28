@@ -73,7 +73,7 @@ test("imports a folder from the inbox, leaves it unchanged, and says Done", { ta
   await form.getByLabel("Download the game image", { exact: false }).uncheck();
   await form.getByRole("button", { name: "Import folder" }).click();
   await expect(page).toHaveURL("/worlds/old-game?imported=1&unchecked=1");
-  await expect(page.locator(".message--success")).toHaveText("Done: Imported Old game.");
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Imported Old game.");
   await expect(page.locator(".message--warning:not(#export-warning)")).toContainText("could not reach Docker Hub to check that Factorio 2.0.72 exists");
   await expect(page.locator("dl.facts")).toContainText("Imported fromThe folder saves-2025, save base.zip");
   await expect(page.locator("dl.facts")).toContainText("2.0.72");
@@ -222,12 +222,12 @@ test("several folders import at once, each reported", { tag: "@looks" }, async (
   await checkPage(page);
   await form.getByRole("button", { name: "Import folder" }).click();
 
-  const done = page.locator(".message--success");
-  await expect(done).toContainText("Done: Imported 2 folders.");
+  await expect(page.locator("#toasts .toast--success")).toContainText("Done: Imported 2 folders.");
+  // The way to each new world stays in the page (DESIGN 6, "Toasts").
+  const done = page.locator("#import-result");
   await expect(done.getByRole("link", { name: "Open sa" })).toHaveAttribute("href", "/worlds/sa");
   await expect(done).toContainText("Downloading the game image for Factorio 2.0.77, 2.1.24.");
   await expect(page.locator(".message--warning:not(#export-warning)")).toContainText("junk: Foreman could not read its save");
-  await expect(page.locator("#import-result")).toBeFocused();
   await checkPage(page);
 
   expect(worldJSON(foreman, "sa")).toMatchObject({ name: "sa", game_version: "2.1.24", space_age: true });
@@ -378,7 +378,7 @@ test("imports a world by uploading a save, and suggests its name", { tag: "@look
   await form.getByRole("button", { name: "Upload and import" }).click();
   await expect(page).toHaveURL("/worlds/uploaded?imported=1&unchecked=1");
   await expect(page.getByRole("heading", { level: 1 })).toHaveText("Uploaded Active");
-  await expect(page.locator(".message--success")).toHaveText("Done: Imported Uploaded.");
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Imported Uploaded.");
   expect(readdirSync(join(foreman.dataDir, "worlds", "uploaded", "saves"))).toEqual(["my save.zip"]);
 
   // A file that is not a zip is refused and no world is made.

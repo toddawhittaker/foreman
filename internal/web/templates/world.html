@@ -3,28 +3,21 @@
 <script src="{{static "copy.js"}}" defer></script>
 <script src="{{static "toggletip.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .Page.World.Name)}}{{end}}
+{{define "head-title"}}{{with .Page}}{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}{{if .Ready}} <span class="badge">{{t "worlds.badge.ready"}}</span>{{else if .World.Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-{{- /* The live state sits beside the heading, not in it, so the heading stays the world's name (DESIGN 7.5). */}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" .World.Name)}}
-<div class="title-row">
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{if .World.Archived}} <span class="badge">{{t "worlds.badge.archived"}}</span>{{end}}{{if .Ready}} <span class="badge">{{t "worlds.badge.ready"}}</span>{{else if .World.Unfinished}} <span class="badge">{{t "worlds.badge.unfinished"}}</span>{{end}}</h1>
-</div>
-{{template "rail" $}}
+{{template "pagehead" $}}
 {{- if .World.Unreadable}}
 <p>{{tHTML "worlds.unreadable" "folder" (code .World.ID)}}</p>
 {{- else if .World.Newer}}
 <p>{{t "worlds.error.newer_format"}}</p>
 {{- end}}
-{{- if not .Done.IsZero}}
-<div class="message message--success" id="world-done" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
-  {{- with .ImportSync}}
-  <div class="actions"><a href="{{.}}" class="button" id="act-import-sync">{{t "mods.sync.import"}}</a></div>
-  {{- end}}
-</div>
+{{- /* The import's result is a toast; matching the mods to the save is its next step, so that stays here. */}}
+{{- with .ImportSync}}
+<div class="actions" id="world-import-sync"><a href="{{.}}" class="button" id="act-import-sync">{{t "mods.sync.import"}}</a></div>
 {{- end}}
 {{- /* An Unfinished world has no map yet; its set-up goes on where work remains (SPEC 5.6). */}}
 {{- with .ContinuePath}}
@@ -44,11 +37,6 @@
   <p><strong>{{t "common.label.note"}}</strong> {{t "worlds.ready.text"}}</p>
 {{- end}}
   <div class="actions"><a href="{{.}}" id="act-change-setup">{{t "worlds.ready.change"}}</a></div>
-</div>
-{{- end}}
-{{- if not .ArchiveError.IsZero}}
-<div class="message message--error" id="archive-error" tabindex="-1" autofocus>
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .ArchiveError}}</p>
 </div>
 {{- end}}
 {{- if not .Warning.IsZero}}
@@ -76,12 +64,7 @@
   {{- end}}
 </div>
 {{- end}}
-{{- /* The page reloads when the update ends; the result then takes focus, which reads it out; it is not also announced (DESIGN 7.6). */}}
-{{- if not .UpdateDone.IsZero}}
-<div class="message message--success" id="world-result" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{msg .UpdateDone}}</p>
-</div>
-{{- end}}
+{{- /* The page reloads when the update ends: a success is a toast, and a failure, with what it left, takes focus here (DESIGN 7.6). */}}
 {{- with .UpdateFailure}}
 <div id="world-result" tabindex="-1" autofocus>{{template "server-failure" .}}</div>
 {{- end}}
@@ -151,9 +134,9 @@
     <p class="tip__text" id="favorite-hint">{{t "favorites.make.text"}}{{if .FavDefaultMap}} {{t "favorites.make.default_map"}}{{end}}</p>
   </div>
   <div class="world-share__body">
+    {{- /* The toast says it was made; what it left out and the way to it stay with the form. */}}
     {{- with .FavMade}}
-    <div class="message message--success" id="favorite-made" tabindex="-1" autofocus>
-      <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.made" "name" .Name}}</p>
+    <div class="message message--note" id="favorite-made">
       {{- if .DefaultMap}}
       <p>{{t "favorites.made.default_map"}}</p>
       {{- end}}

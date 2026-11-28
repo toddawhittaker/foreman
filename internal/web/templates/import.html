@@ -3,15 +3,17 @@
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
 <script src="{{static "import.js"}}" defer></script>{{end}}
 
+{{define "head-crumb"}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.import.title"))}}{{end}}
+{{define "head-title"}}{{t "worlds.import.title"}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.import.title"))}}
-<h1>{{t "worlds.import.title"}}</h1>
+{{template "pagehead" $}}
 <p class="page-intro">{{t "worlds.import.intro"}}</p>
 {{- with .Result}}
+{{- /* The toast says how many were imported; the way to each new world stays here. */}}
 {{- if .Imported}}
-<div class="message message--success" id="import-result" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{t "worlds.import.result.imported" "count" (len .Imported)}}</p>
+<div class="message message--note" id="import-result">
   <ul>
     {{- range .Imported}}
     <li><code>{{.Folder}}</code>: <a href="{{$.Page.WorldPath .WorldID}}">{{t "worlds.import.result.open" "world" .WorldName}}</a></li>
@@ -23,7 +25,7 @@
 </div>
 {{- end}}
 {{- with .Skipped}}
-<div class="message message--warning"{{if not $.Page.Result.Imported}} id="import-result" tabindex="-1" autofocus{{end}}>
+<div class="message message--warning" id="import-skipped">
   <p><strong>{{t "common.label.warning"}}</strong> {{t "worlds.import.result.skipped" "count" (len .)}}</p>
   <ul>
     {{- range .}}
@@ -61,9 +63,8 @@
   {{/* The file comes last: the server reads the text fields before it. */}}
   {{template "dropzone" .SourceZone}}
   {{- end}}
-  <div class="actions form-foot">
-    <button type="submit" class="button{{if not .Importable}} button--primary{{end}}">{{t "worlds.import.upload.button"}}</button>
-  </div>
+  {{- /* Only the chosen way's form shows, so each foot's button is that view's one primary. */}}
+  {{template "form-foot" (formFoot "submit" (t "worlds.import.upload.button"))}}
 </form>
 
 <form method="post" action="{{.FolderPath}}" class="panel import-folder" novalidate aria-labelledby="folder-heading">
@@ -91,9 +92,9 @@
     {{- end}}
   </fieldset>
   {{- else if $.Page.Inbox}}
-  <p class="empty" id="folder-source-0" tabindex="-1">{{tHTML "worlds.import.folder.nothing" "zip" (code ".zip")}}</p>
+  {{template "empty" (empty "worlds" (tHTML "worlds.import.folder.nothing" "zip" (code ".zip")) "folder-source-0")}}
   {{- else}}
-  <p class="empty" id="folder-source-0" tabindex="-1">{{t "worlds.import.folder.empty"}}</p>
+  {{template "empty" (empty "worlds" (t "worlds.import.folder.empty") "folder-source-0")}}
   {{- end}}
   {{- with $.Page.Unimportable}}
   <h3>{{t "worlds.import.unimportable.heading"}}</h3>
@@ -109,9 +110,7 @@
   {{- end}}
   {{- end}}
   {{- if .Importable}}
-  <div class="actions form-foot">
-    <button type="submit" class="button button--primary">{{t "worlds.import.folder.button"}}</button>
-  </div>
+  {{template "form-foot" (formFoot "submit" (t "worlds.import.folder.button"))}}
   {{- end}}
 </form>
 
@@ -122,9 +121,7 @@
   <p>{{t "worldfile.import.intro"}}</p>
   {{template "required-note"}}
   {{template "dropzone" .WorldFileZone}}
-  <div class="actions form-foot">
-    <button type="submit" class="button" id="act-upload-world-file">{{t "worldfile.import.button"}}</button>
-  </div>
+  {{template "form-foot" (formFoot "submit" (t "worldfile.import.button") "submitID" "act-upload-world-file")}}
 </form>
 {{end}}
 {{- end}}
@@ -191,4 +188,3 @@
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

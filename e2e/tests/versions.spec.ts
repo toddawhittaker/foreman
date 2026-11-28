@@ -302,13 +302,12 @@ test.describe("with the fake game", () => {
     await page.getByRole("button", { name: "Update game version" }).click();
 
     await expect(page).toHaveURL("/worlds/second?result=1");
-    const result = page.locator("#world-result");
+    // The reloaded page sums up the result in a toast, which the announcer
+    // reads out and which never takes focus (DESIGN 6, "Toasts").
+    const result = page.locator("#toasts .toast--success");
     await expect(result).toContainText("The game version is updated.", live);
-    // DESIGN 7.6: the reloaded page puts focus on the result, which reads it out;
-    // the announcer must not say it a second time (it would have, 500 ms later).
-    await expect(result).toBeFocused();
-    await page.waitForTimeout(1500);
-    await expect(page.locator("#announcer")).toBeEmpty();
+    await expect(page.locator("#announcer")).toContainText("The game version is updated.");
+    expect(await page.evaluate(() => document.activeElement?.closest("#toasts") ?? null)).toBeNull();
     await expect(page.locator("dl.facts")).toContainText("2.1.25");
     expect(diskVersion(foreman, "second")).toBe("2.1.25");
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
@@ -317,7 +316,7 @@ test.describe("with the fake game", () => {
     expect(await snapshotLabels(page, "second")).toContain("Before update");
     // A later visit no longer shows the result.
     await page.goto("/worlds/second");
-    await expect(page.locator("#world-result")).toHaveCount(0);
+    await expect(page.locator("#toasts .toast--success")).toHaveCount(0);
     await expect(page.getByText("The game version is updated.")).toHaveCount(0);
     await checkPage(page);
 
@@ -382,7 +381,7 @@ test.describe("with the fake game", () => {
     await refusal.locator("summary", { hasText: "Or update anyway" }).click();
     await refusal.getByRole("button", { name: "Update anyway" }).click();
     await expect(page).toHaveURL("/worlds/second?result=1");
-    await expect(page.locator("#world-result")).toContainText("The game version is updated.", live);
+    await expect(page.locator("#toasts .toast--success")).toContainText("The game version is updated.", live);
     expect(diskVersion(foreman, "second")).toBe("2.1.25");
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
     expect(await snapshotLabels(page, "second")).toContain("Before update");
@@ -421,7 +420,7 @@ test.describe("with the fake game", () => {
     expect(resp.status()).toBe(409);
     expect(diskVersion(foreman, "base")).toBe("2.1.24");
     await page.goto("/worlds/base/rollback");
-    await expect(page.locator("#action-error")).toContainText("Error:");
+    await expect(page.locator("#toasts .toast--error")).toContainText("Error:");
     await expect(page.getByRole("button", { name: /Roll back to/ })).toHaveCount(0);
     await checkPage(page);
     expect(diskVersion(foreman, "base")).toBe("2.1.24");

@@ -109,9 +109,9 @@ test("an uploaded save appears, is kept byte for byte, and loads as the newest",
   await page.getByRole("button", { name: "Upload save" }).click();
 
   await expect(page).toHaveURL(/\/worlds\/family-base\/saves\?uploaded=/);
-  await expect(page.getByText("Done: Uploaded from elsewhere.zip.")).toBeVisible();
-  // DESIGN 7.6: the reload puts focus on the result.
-  await expect(page.locator(".message--success", { hasText: "Uploaded from elsewhere.zip." })).toBeFocused();
+  await expect(page.locator("#toasts").getByText("Done: Uploaded from elsewhere.zip.")).toBeVisible();
+  // The result is a toast, which never takes focus (DESIGN 6, "Toasts").
+  expect(await page.evaluate(() => document.activeElement?.closest("#toasts") ?? null)).toBeNull();
   await expect(page.locator("tbody tr")).toHaveCount(3);
   await expect(page.locator("tbody tr").first().getByRole("link")).toHaveText("from elsewhere.zip");
   expect(readFileSync(join(dir, "saves", "from elsewhere.zip")).equals(upload)).toBe(true);
@@ -196,9 +196,9 @@ test("choosing which save loads is kept, and going back to the newest clears it"
   await page.getByRole("button", { name: "Load next: old.zip" }).click();
 
   await expect(page).toHaveURL(/saves\?chosen=1/);
-  await expect(page.getByText("The server will load old.zip the next time it starts.")).toBeVisible();
-  // DESIGN 7.6: the reload puts focus on the result.
-  await expect(page.locator(".message--success", { hasText: "The server will load old.zip" })).toBeFocused();
+  await expect(page.locator("#toasts").getByText("The server will load old.zip the next time it starts.")).toBeVisible();
+  // The result is a toast, which never takes focus (DESIGN 6, "Toasts").
+  expect(await page.evaluate(() => document.activeElement?.closest("#toasts") ?? null)).toBeNull();
   // SPEC 7.11: the choice applies once, and the page says so.
   await expect(page.getByText("The game loads old.zip at the next start, then the newest save again.")).toBeVisible();
   await expect(rows.nth(1)).toContainText("Loads next");
@@ -210,7 +210,7 @@ test("choosing which save loads is kept, and going back to the newest clears it"
   await checkPage(page);
 
   await page.getByRole("button", { name: "Load next: the newest save" }).click();
-  await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
+  await expect(page.locator("#toasts").getByText("will load the newest save the next time it starts")).toBeVisible();
   await expect(rows.nth(0)).toContainText("Loads next");
   expect(loadSaveOf(dir) ?? "").toBe("");
 });
@@ -223,7 +223,7 @@ test.describe("without JavaScript", () => {
     const dir = seedTwoSaves(foreman);
     await page.goto("/worlds/family-base/saves");
     await page.getByRole("button", { name: "Load next: old.zip" }).click();
-    await expect(page.getByText("The server will load old.zip the next time it starts.")).toBeVisible();
+    await expect(page.locator("#toasts").getByText("The server will load old.zip the next time it starts.")).toBeVisible();
     expect(loadSaveOf(dir)).toBe("old.zip");
   });
 });
@@ -238,7 +238,7 @@ test("a chosen save that was removed by hand is explained", async ({ page, forem
   await checkPage(page);
   // The stale choice can be cleared from the newest row (SPEC 7.11).
   await newest.getByRole("button", { name: "Load next: the newest save" }).click();
-  await expect(page.getByText("will load the newest save the next time it starts")).toBeVisible();
+  await expect(page.locator("#toasts").getByText("will load the newest save the next time it starts")).toBeVisible();
   await expect(page.getByText("is no longer in the saves folder")).toHaveCount(0);
   await expect(newest).toContainText("Loads next");
   expect(loadSaveOf(dir) ?? "").toBe("");
@@ -307,7 +307,7 @@ test("at large text the rows stack and keep their roles", { tag: "@looks" }, asy
   await checkPage(page);
 });
 
-// DESIGN 7.3: the success and note kinds are drawn, not left as plain text.
+// DESIGN 7.3: the success toast and the note are drawn, not left as plain text.
 test("success and note messages have their own colours", { tag: "@looks" }, async ({ page, foreman }) => {
   await createAdmin(page);
   const dir = seedTwoSaves(foreman, { load_save: "gone.zip" });
@@ -319,7 +319,7 @@ test("success and note messages have their own colours", { tag: "@looks" }, asyn
   const noteBg = await bg(note);
   expect(noteBg).not.toBe(plain);
   await page.getByRole("button", { name: "Load next: old.zip" }).click();
-  const ok = page.locator(".message--success");
+  const ok = page.locator("#toasts .toast--success");
   await expect(ok).toBeVisible();
   expect(await bg(ok)).not.toBe(noteBg);
   expect(await bg(ok)).not.toBe(plain);

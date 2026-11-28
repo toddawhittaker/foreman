@@ -1,13 +1,10 @@
 {{define "title"}}{{t "worlds.snapshots.delete.title" "world" .Page.WorldName}}{{end}}
 
+{{define "head-title"}}{{with .Page}}{{tHTML "worlds.snapshots.delete.question" "label" (snapLabel .Snapshot) "world" .WorldName "when" (momentUTCSeconds .Snapshot.TakenAt)}}{{end}}{{end}}
+
 {{define "content" -}}
 {{with .Page}}
-<h1 id="confirm-heading">{{tHTML "worlds.snapshots.delete.question" "label" (snapLabel .Snapshot) "world" .WorldName "when" (momentUTCSeconds .Snapshot.TakenAt)}}</h1>
-{{- if not .Error.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1" autofocus>
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-</div>
-{{- end}}
+{{template "pagehead" $}}
 <section class="confirm">
   {{- with .Rollback}}
   <div class="message message--warning">

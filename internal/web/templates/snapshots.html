@@ -2,37 +2,13 @@
 
 {{define "scripts"}}<script src="{{static "ticks.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .WorldName "" (t "worlds.world.snapshots"))}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .WorldName "" (t "worlds.world.snapshots"))}}
-<div class="title-row">
-<h1>{{.WorldName}}{{if .Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-</div>
-{{template "rail" $}}
-{{- if not .Done.IsZero}}
-<div class="message message--success">
-  <p><strong>{{t "common.label.done"}}</strong> {{msg .Done}}</p>
-  {{- if $.Page.DoneSnap}}
-  <div class="actions"><a href="#restore-{{$.Page.DoneSnap}}">{{t "worlds.snapshots.go_to"}}</a></div>
-  {{- end}}
-</div>
-{{- end}}
-{{- if .Deleted}}
-<div class="message message--success">
-  <p><strong>{{t "common.label.done"}}</strong> {{if eq (len .Deleted) 1}}{{tHTML "worlds.snapshots.deleted_one" "when" (momentUTCSeconds (index .Deleted 0))}}{{else}}{{t "worlds.snapshots.deleted_many" "count" (len .Deleted)}}{{end}}</p>
-</div>
-{{- else if .Removed}}
-<div class="message message--success">
-  <p><strong>{{t "common.label.done"}}</strong> {{t "worlds.snapshots.deleted_many" "count" .Removed}}</p>
-</div>
-{{- end}}
-{{- if not .Error.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1"{{if .LabelError.IsZero}} autofocus{{end}}>
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-</div>
-{{- end}}
+{{template "pagehead" $}}
 
 <form method="post" action="{{.Path}}" class="panel setting-row" novalidate>
   <div class="setting-row__head">
@@ -106,7 +82,7 @@
 {{- else}}
 <section class="panel" aria-labelledby="list-heading">
   <h2 id="list-heading">{{t "worlds.snapshots.list"}}</h2>
-  <p class="empty empty--art empty--snapshots">{{t "worlds.snapshots.empty"}}</p>
+  {{template "empty" (empty "snapshots" (t "worlds.snapshots.empty"))}}
 </section>
 {{- end}}
 

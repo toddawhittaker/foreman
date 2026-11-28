@@ -19,8 +19,7 @@ test("archive from the world page, find it in the foldout, then unarchive", { ta
   await expect(page).toHaveURL("/worlds/second?archived=on");
   await expect(page.getByRole("heading", { level: 1 })).toContainText("Second");
   await expect(page.locator("h1 .badge")).toHaveText("Archived");
-  await expect(page.locator(".message--success")).toContainText("Second is archived.");
-  await expect(page.locator("#world-done")).toBeFocused();
+  await expect(page.locator("#toasts .toast--success")).toContainText("Second is archived.");
   await expect(page.locator("#act-switch")).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Archive world", exact: true })).toHaveCount(0);
   await checkPage(page);
@@ -42,7 +41,7 @@ test("archive from the world page, find it in the foldout, then unarchive", { ta
 
   await page.getByRole("button", { name: "Unarchive world" }).click();
   await expect(page).toHaveURL("/worlds/second?archived=off");
-  await expect(page.locator(".message--success")).toContainText("Second is unarchived.");
+  await expect(page.locator("#toasts .toast--success")).toContainText("Second is unarchived.");
   await expect(page.locator("h1 .badge")).toHaveCount(0);
   await expect(page.locator("#act-switch")).toBeVisible();
 

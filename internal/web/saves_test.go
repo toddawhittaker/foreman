@@ -353,7 +353,7 @@ func TestChooseSave(t *testing.T) {
 
 	hn.wantRedirect(hn.chooseSave(c, id, url.Values{"load": {"old.zip"}}), "/worlds/"+id+"/saves?chosen=1")
 	body = hn.get("/worlds/"+id+"/saves?chosen=1", withCookie(c)).Body.String()
-	wantIn(t, "chosen page", body, "The server will load <code>old.zip</code> the next time it starts.")
+	wantToast(t, "chosen page", body, false, "The server will load old.zip the next time it starts.")
 	if row := saveRow(t, body, "old.zip"); !strings.Contains(row, loads) || strings.Contains(row, "<button") {
 		t.Errorf("chosen row should load next with no button:\n%s", row)
 	}

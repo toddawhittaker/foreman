@@ -1,21 +1,17 @@
 {{define "title"}}{{t "worlds.clone.title" "name" .Page.World.Name}}{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-title"}}{{t "worlds.clone.title" "name" .Page.World.Name}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-<h1>{{t "worlds.clone.title" "name" .World.Name}}</h1>
-{{template "rail" $}}
+{{template "pagehead" $}}
 <form method="post" action="{{.Path}}" class="panel" novalidate aria-labelledby="clone-heading">
   <h2 id="clone-heading">{{t "worlds.clone.heading"}}</h2>
   {{template "summary" .Problems}}
-  {{- if not .Error.IsZero}}
-  <div class="message message--error" id="clone-refusal" tabindex="-1"{{if not .Problems}} autofocus{{end}}>
-    <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-    {{- if .ErrorBusy}}
-    <div class="actions"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
-    {{- end}}
-  </div>
+  {{- /* The refusal is a toast; when the server is busy the way to it stays here. */}}
+  {{- if and (not .Error.IsZero) .ErrorBusy}}
+  <div class="actions" id="clone-refusal"><a href="{{serverPath}}">{{t "worlds.world.server_link"}}</a></div>
   {{- end}}
   <p>{{t "worlds.clone.copies"}}</p>
   <ul>
@@ -50,10 +46,7 @@
   <input type="hidden" name="map" value="fresh">
   <p id="clone-fresh" tabindex="-1">{{msg .FreshOnlyWhy}} {{t "worlds.clone.map.fresh_only"}}</p>
   {{- end}}
-  <div class="actions">
-    <button type="submit" class="button button--primary">{{t "worlds.clone.button"}}</button>
-    <a href="{{.WorldPath}}">{{t "worlds.cancel"}}</a>
-  </div>
+  {{template "form-foot" (formFoot "submit" (t "worlds.clone.button") "cancel" .WorldPath "cancelText" (t "worlds.cancel"))}}
 </form>
 {{end}}
 {{- end}}

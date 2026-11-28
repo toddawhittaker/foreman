@@ -23,7 +23,7 @@ async function takeSnapshot(page: Page, label: string) {
   await page.goto(`${world}/snapshots`);
   await page.getByLabel("Label (optional)").fill(label);
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText(`Done: Foreman took the snapshot "${label}".`)).toBeVisible();
+  await expect(page.locator("#toasts").getByText(`Done: Foreman took the snapshot "${label}".`)).toBeVisible();
 }
 
 // A restore takes a "Before restore" snapshot first, which is an automatic one.
@@ -112,7 +112,7 @@ test("select all automatic ticks, and delete selected asks first", async ({ page
   await page.getByRole("button", { name: "Delete selected" }).click();
   await page.getByRole("button", { name: "Delete 2 snapshots" }).click();
   await expect(page).toHaveURL("/snapshots?removed=2");
-  await expect(page.getByText("Done: Foreman deleted 2 snapshots.")).toBeVisible();
+  await expect(page.locator("#toasts").getByText("Done: Foreman deleted 2 snapshots.")).toBeVisible();
   await expect(rowsOf(page)).toHaveCount(1);
   await expect(rowsOf(page).first()).toContainText("Keep me");
   await checkPage(page);
@@ -175,7 +175,7 @@ test("the total is what deleting everything frees", async ({ page, foreman }) =>
   await page.getByRole("button", { name: "Delete selected" }).click();
   await expect(page.getByText(`Free ${added} of disk space`)).toBeVisible();
   await page.getByRole("button", { name: "Delete 2 snapshots" }).click();
-  await expect(page.getByText("Done: Foreman deleted 2 snapshots.")).toBeVisible();
+  await expect(page.locator("#toasts").getByText("Done: Foreman deleted 2 snapshots.")).toBeVisible();
   await expect(page.locator("main dd").first()).toHaveText("0 B");
 });
 
@@ -192,7 +192,7 @@ test("the confirmation says which snapshots are already deleted", async ({ page,
   await checkPage(page);
 
   await postFrom(page, "/snapshots", "/snapshots/review", []);
-  await expect(page.getByText("Nothing is ticked.")).toBeVisible();
+  await expect(page.locator("#toasts").getByText("Nothing is ticked.")).toBeVisible();
   await checkPage(page);
 });
 

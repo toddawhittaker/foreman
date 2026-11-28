@@ -152,8 +152,7 @@ func TestFailedRestoreLinksToItsUndo(t *testing.T) {
 }
 
 // DESIGN 8.3: three columns, the reason above the label, timestamps that
-// break only between date and time, "Go to the snapshot" landing on the
-// Restore link, and Restore names that tell apart snapshots taken in the
+// break only between date and time, and Restore names that tell apart snapshots taken in the
 // same minute.
 func TestSnapshotTables(t *testing.T) {
 	r := newTestRenderer(t)
@@ -162,7 +161,7 @@ func TestSnapshotTables(t *testing.T) {
 	_, body := render(t, r, pageCase{status: 200, user: "todd", page: p})
 	wantIn(t, "snapshots page", body,
 		`<th scope="col" role="columnheader">Snapshot</th><th scope="col" role="columnheader">Taken</th><th scope="col" class="num" role="columnheader">Size</th>`,
-		`href="#restore-20261103T142500Z"`, `id="restore-20261103T142500Z"`,
+		`id="restore-20261103T142500Z"`,
 		`<input type="checkbox" name="snap" value="base/20261103T142500Z"><span class="snap-name"><span class="snap-kind">Manual</span><br>`,
 		`<span class="nowrap">2026-11-03</span> <span class="nowrap">14:25 UTC</span>`,
 		`taken <time datetime="2026-11-03T14:25:00Z">2026-11-03 14:25:00 UTC</time>`, `taken <time datetime="2026-11-03T14:25:30Z">2026-11-03 14:25:30 UTC</time>`)
@@ -229,8 +228,7 @@ func TestWorldListAfterDelete(t *testing.T) {
 	rec := hn.post(deletePath(id), url.Values{"final_snapshot": {"on"}, "confirm_name": {"Second"}}, withCookie(c))
 	hn.wantRedirect(rec, PathWorlds+"?deleted="+id)
 	body := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
-	wantIn(t, "world list", body, `class="message message--success"`,
-		`Deleted Second. Its snapshots are under Deleted worlds.`, `<a href="/deleted">Go to Deleted worlds</a>`)
+	wantToast(t, "world list", body, false, "Deleted Second. Its snapshots are under Deleted worlds.")
 }
 
 // DESIGN 6: a breadcrumb is made of href and label pairs, so an odd count is

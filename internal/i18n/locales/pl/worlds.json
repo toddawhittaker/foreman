@@ -149,7 +149,6 @@
   "worlds.list.all": "Wszystkie światy",
   "worlds.list.deleted_gone": "Usunięto świat {name}. Nie miał migawek, więc nie można go przywrócić.",
   "worlds.list.deleted_kept": "Usunięto świat {name}. Jego migawki są w sekcji „Usunięte światy”.",
-  "worlds.list.deleted_link": "Przejdź do usuniętych światów",
   "worlds.list.empty": "Nie ma jeszcze żadnych światów. Aby utworzyć pierwszy świat, należy zaimportować folder z zapisami lub przesłać plik zapisu.",
   "worlds.list.upload_save": "Prześlij zapis",
   "worlds.list.import": "Importuj świat",

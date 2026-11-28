@@ -144,7 +144,6 @@
   "worlds.list.all": "All worlds",
   "worlds.list.deleted_gone": "Deleted {name}. It had no snapshots, so it cannot be restored.",
   "worlds.list.deleted_kept": "Deleted {name}. Its snapshots are under Deleted worlds.",
-  "worlds.list.deleted_link": "Go to Deleted worlds",
   "worlds.list.empty": "No worlds yet. Import a folder of saves or upload a save file to make your first world.",
   "worlds.list.upload_save": "Upload a save",
   "worlds.list.import": "Import a world",
