@@ -20,7 +20,7 @@ func TestSettingsResultsAreToasts(t *testing.T) {
 	}{
 		{GeneralPage{Saved: true}, false, "Saved. The new settings apply from now on."},
 		{GeneralPage{Saved: true, Trims: true, Trim: trimCount{Snapshots: 3, Worlds: 1}}, false, "Worlds affected: 1."},
-		{SchedulePage{Saved: true, On: true, Next: time.Date(2026, 11, 3, 4, 30, 0, 0, time.UTC)}, false, "Saved. The next restart is 2026-11-03 04:30 UTC."},
+		{SchedulePage{Saved: true, On: true, Next: time.Date(2026, 11, 3, 4, 30, 0, 0, time.UTC)}, false, `Saved. The next restart is <time datetime="2026-11-03T04:30:00Z">2026-11-03 04:30 UTC</time>.`},
 		{SchedulePage{Saved: true}, false, "Saved. No restart is scheduled."},
 		{NotificationsPage{Done: i18n.M("notify.done.added")}, false, ""},
 		{PublicModsSettingsPage{Done: "on"}, false, ""},
