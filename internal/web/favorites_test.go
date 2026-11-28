@@ -101,6 +101,14 @@ func TestMakeFavoriteFromWorldPage(t *testing.T) {
 	if strings.Contains(hn.get(worldPath(id)+"?favorite=ffffffffffffffff", withCookie(c)).Body.String(), "Made the favorite") {
 		t.Error("an unknown favorite id showed a confirmation")
 	}
+	// Another world's page never shows this world's favorite.
+	other, err := hn.worlds.Generate(context.Background(), world.NewWorld{Name: "Other", GameVersion: "2.0.77"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if strings.Contains(hn.get(worldPath(other)+"?favorite="+list[0].ID, withCookie(c)).Body.String(), "Made the favorite") {
+		t.Error("another world's page showed this world's favorite")
+	}
 }
 
 func TestImportedWorldFavoriteSaysDefaultMap(t *testing.T) {

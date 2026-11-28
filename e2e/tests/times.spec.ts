@@ -130,3 +130,13 @@ test("the crash-loop Restore offer names the local time", { tag: "@looks" }, asy
   await expect(restore).not.toHaveText(/UTC|ago|now/);
   await checkPage(page);
 });
+
+// SPEC 17.11: the time in a deleted-snapshot toast shows in the browser's zone.
+test("a deleted snapshot's toast shows its time in the browser's zone", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/snapshots?deleted=20261102T120000Z");
+  const time = page.locator("#toasts time");
+  await expect(time).toHaveAttribute("datetime", "2026-11-02T12:00:00Z");
+  await expect(time).toContainText(/\b(EST|EDT)\b/);
+  await expect(time).not.toContainText("UTC");
+});

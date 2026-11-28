@@ -7,10 +7,12 @@
 {{- end}}
 
 {{/* One message: its kind's word, its text, and a close button that needs
-     script. A message that comes after the page is "toast-oob". Takes Toast. */}}
+     script. A message that comes after the page is "toast-oob". The text is
+     msgHTML, so a time in it is a <time> element; every argument is escaped.
+     data-drop names the address parameters toast.js removes. Takes Toast. */}}
 {{define "toast" -}}
-<div class="toast toast--{{if .Error}}error{{else}}success{{end}}" data-toast>
-<p class="toast__text"><strong>{{if .Error}}{{t "common.error.label"}}{{else}}{{t "common.label.done"}}{{end}}</strong> <span data-toast-text>{{msg .Text}}</span></p>
+<div class="toast toast--{{if .Error}}error{{else}}success{{end}}" data-toast{{with .DropParams}} data-drop="{{.}}"{{end}}>
+<p class="toast__text"><strong>{{if .Error}}{{t "common.error.label"}}{{else}}{{t "common.label.done"}}{{end}}</strong> <span data-toast-text>{{msgHTML .Text}}</span></p>
 <button type="button" class="toast__close" aria-label="{{t "server.done.close"}}" data-toast-close></button>
 </div>
 {{- end}}

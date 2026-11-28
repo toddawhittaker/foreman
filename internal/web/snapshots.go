@@ -53,8 +53,12 @@ type SnapshotsPage struct {
 	LabelError i18n.Msg
 	// Error says why the last action failed, in plain words.
 	Error i18n.Msg
-	// Done says what the last action did.
-	Done i18n.Msg
+	// Done says what the last action did; DoneSnap is the snapshot it names,
+	// which the page links to, and DoneParam the address parameter that
+	// carried it, which the toast drops.
+	Done      i18n.Msg
+	DoneSnap  string
+	DoneParam string
 	// Deleted holds when each snapshot the last delete removed was taken.
 	Deleted []time.Time
 	// Removed is how many snapshots the last bulk delete removed.
@@ -141,8 +145,14 @@ func (p RestorePage) Path() string {
 	return restorePath(p.WorldID, p.Snapshot.Name)
 }
 
-// UndoPath restores the "Before restore" snapshot a failed restore took.
-func (p RestorePage) UndoPath() string { return restorePath(p.WorldID, p.Undo) }
+// UndoPath restores the "Before restore" snapshot a failed restore took,
+// from the area the restore was opened from.
+func (p RestorePage) UndoPath() string {
+	if p.FromAll {
+		return restorePath(p.WorldID, p.Undo) + "?from=" + fromAll
+	}
+	return restorePath(p.WorldID, p.Undo)
+}
 
 // SnapshotsPath is where cancelling goes.
 func (p RestorePage) SnapshotsPath() string {
@@ -210,17 +220,17 @@ func (s *server) handleSnapshots(w http.ResponseWriter, r *http.Request, u store
 	}
 	q := r.URL.Query()
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("taken")); ok {
-		p.Done = i18n.M("worlds.snapshots.done.taken", "label", snapshotLabelArg(sn))
+		p.Done, p.DoneSnap, p.DoneParam = i18n.M("worlds.snapshots.done.taken", "label", snapshotLabelArg(sn)), sn.Name, "taken"
 	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("restored")); ok {
-		p.Done = i18n.M("worlds.snapshots.done.restored", "label", snapshotLabelArg(sn))
+		p.Done, p.DoneSnap, p.DoneParam = i18n.M("worlds.snapshots.done.restored", "label", snapshotLabelArg(sn)), sn.Name, "restored"
 	}
 	if sn, ok := findSnapshot(p.Snapshots, q.Get("undo")); ok {
-		p.Done = i18n.M("worlds.snapshots.done.undo", "label", snapshotLabelArg(sn))
+		p.Done, p.DoneSnap, p.DoneParam = i18n.M("worlds.snapshots.done.undo", "label", snapshotLabelArg(sn)), sn.Name, "undo"
 	}
 	p.Deleted, p.Removed = deletedTimes(q["deleted"]), removedCount(r)
 	if len(p.Deleted) > 0 || p.Removed > 0 {
-		p.Done = i18n.Msg{}
+		p.Done, p.DoneSnap, p.DoneParam = i18n.Msg{}, "", ""
 	}
 	s.page(w, r, http.StatusOK, u.Username, p)
 }

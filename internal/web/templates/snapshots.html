@@ -9,6 +9,10 @@
 {{define "content" -}}
 {{with .Page}}
 {{template "pagehead" $}}
+{{- /* The toast leaves after a while; in a long list this link is the way to the snapshot it named. */}}
+{{- if .DoneSnap}}
+<p class="snapshot-jump" id="snapshot-jump"><a href="#restore-{{.DoneSnap}}">{{t "worlds.snapshots.go_to"}}</a></p>
+{{- end}}
 
 <form method="post" action="{{.Path}}" class="panel setting-row" novalidate>
   <div class="setting-row__head">

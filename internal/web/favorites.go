@@ -408,7 +408,9 @@ func (s *server) favoriteFacts(p *WorldPage, r *http.Request) {
 		return
 	}
 	fav, _, err := s.favorites.Get(id)
-	if err != nil {
+	// A favorite names the world it came from by name, which is unique, so
+	// another world's page never shows this one's confirmation.
+	if err != nil || fav.SourceWorld != p.World.Name {
 		return
 	}
 	p.FavMade = &FavoriteMade{Name: fav.Name, LeftOut: fav.LeftOut, DefaultMap: getsDefaultMap(fav.HasMapSettings, fav.Preset)}

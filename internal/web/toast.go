@@ -1,6 +1,10 @@
 package web
 
-import "github.com/toddawhittaker/foreman/internal/i18n"
+import (
+	"strings"
+
+	"github.com/toddawhittaker/foreman/internal/i18n"
+)
 
 // Toast is a result message that floats over the page and takes no room
 // (DESIGN 6, "Toasts"). A success closes itself; an error stays until closed.
@@ -9,7 +13,14 @@ type Toast struct {
 	// Error marks a failed action; otherwise the toast says it was done.
 	Error bool
 	Text  i18n.Msg
+	// Drop names the address parameters that produced the toast, such as
+	// "renamed" after a redirect. toast.js takes them out of the address
+	// once the toast is shown, so a reload or Back does not show it again.
+	Drop []string
 }
+
+// DropParams is Drop as the toast's data-drop attribute.
+func (t Toast) DropParams() string { return strings.Join(t.Drop, " ") }
 
 // Toasts are the page's result messages, from pages that have any.
 func (v view) Toasts() []Toast {
