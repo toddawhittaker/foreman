@@ -1814,12 +1814,15 @@ tr:has(> td > .player-actions) > td.num {
    under the band, as before. */
 /* The band's column takes up to 40% of the row, whatever the state, so the
    actions start at the same x in every state and Take snapshot, first, keeps
-   its place (DESIGN 6, "Controls stay put"); only when the actions need more
-   room does the band give it up. */
+   its place (DESIGN 6, "Controls stay put"). It also leaves the 46rem the
+   widest state's row needs in English (Take snapshot, Restart, Stop and
+   Emergency actions while the game runs), so at 64 to 90rem the band is
+   narrower in every state rather than only in the widest; only when the
+   actions need more room still does the band give it up. */
 @media (min-width: 64rem) {
   .status-card.plate {
     display: grid;
-    grid-template-columns: minmax(0, 40%) minmax(max-content, 1fr) auto;
+    grid-template-columns: minmax(0, min(40%, 100% - 46rem)) minmax(max-content, 1fr) auto;
     overflow: visible;
   }
 

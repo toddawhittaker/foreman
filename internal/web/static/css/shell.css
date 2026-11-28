@@ -1291,8 +1291,10 @@ main:has(> .gate) > .gate {
     min-inline-size: 0;
   }
 
-  .subnav li:first-child a,
-  .subnav li:last-child a {
+  /* The top row's own ends only: a Game settings sub-page sits inside the
+     row's last tab, and keeps its own padding (DESIGN 6, "Controls stay put"). */
+  .subnav > :is(ul, ol) > li:first-child > a,
+  .subnav > :is(ul, ol) > li:last-child > a {
     padding-inline: var(--space-1);
     white-space: normal;
     text-align: center;
@@ -1305,8 +1307,8 @@ main:has(> .gate) > .gate {
 @media (max-width: 23rem) {
   .subnav a,
   .subnav a[aria-current],
-  .subnav li:first-child a,
-  .subnav li:last-child a {
+  .subnav > :is(ul, ol) > li:first-child > a,
+  .subnav > :is(ul, ol) > li:last-child > a {
     font-size: var(--text-xs);
   }
 }
@@ -1764,11 +1766,12 @@ main > .crumb {
 }
 
 /* The first part drawn under a page header is 16 px under it, with or
-   without a tab row. A part that draws nothing (a hidden live region, an
-   empty activity block) is skipped, so the gap lands on what is seen. */
+   without a tab row. Parts that draw nothing (hidden live regions, as on
+   Server, Console and Chat, or an empty activity block) are skipped, however
+   many lead, so the gap lands on what is seen. The rule picks the first
+   drawn sibling after the header; :where keeps its weight that of a class. */
 @media (min-width: 40rem) {
-  main > .pagehead + *,
-  main > .pagehead + :is(.visually-hidden, #world-activity:not(:has(*))) + * {
+  main > .pagehead ~ :not(:where([hidden], .visually-hidden, #world-activity:not(:has(*)))):not(:where(main > .pagehead ~ :not([hidden], .visually-hidden, #world-activity:not(:has(*))) ~ *)) {
     margin-block-start: calc(var(--space-4) - var(--space-5));
   }
 }
