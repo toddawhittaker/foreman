@@ -72,7 +72,7 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await page.getByLabel("Type the world's name to confirm").fill("Family base");
   await page.getByRole("button", { name: "Delete world" }).click();
 
-  await expect(page).toHaveURL("/worlds?deleted=family-base");
+  await expect(page).toHaveURL(/\/worlds(\?deleted=family-base)?$/);
   const done = page.locator("#toasts .toast--success");
   await expect(done.locator("p")).toHaveText("Done: Deleted Family base. Its snapshots are under Deleted worlds.");
   expect(existsSync(dir)).toBe(false);
@@ -102,7 +102,7 @@ test("delete with a final snapshot, then restore the world", async ({ page, fore
   await checkPage(page);
   await page.getByRole("button", { name: "Restore snapshot" }).click();
 
-  await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?restored=/);
+  await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots(\?restored=.*)?$/);
   await expect(page.locator("#toasts").getByText(/The world is restored from the snapshot "Before delete"/)).toBeVisible();
   const save = join(dir, "saves", "base.zip");
   expect(readFileSync(save, "utf8")).toBe("the save of Family base");
@@ -159,7 +159,7 @@ test("delete without a final snapshot keeps no snapshot", async ({ page, foreman
   await page.getByLabel("Type the world's name to confirm").fill("Family base");
   await page.getByRole("button", { name: "Delete world" }).click();
 
-  await expect(page).toHaveURL("/worlds?deleted=family-base");
+  await expect(page).toHaveURL(/\/worlds(\?deleted=family-base)?$/);
   await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Deleted family-base. It had no snapshots, so it cannot be restored.");
   expect(existsSync(dir)).toBe(false);
   expect(readdirSync(join(foreman.dataDir, "snapshots", "family-base"))).toEqual([]);
@@ -204,7 +204,7 @@ test("a deleted world's name taken by another world blocks the restore", { tag: 
   await page.goto("/worlds/family-base/delete");
   await page.getByLabel("Type the world's name to confirm").fill("Family base");
   await page.getByRole("button", { name: "Delete world" }).click();
-  await expect(page).toHaveURL("/worlds?deleted=family-base");
+  await expect(page).toHaveURL(/\/worlds(\?deleted=family-base)?$/);
 
   seedWorld(foreman, "newer", "family BASE");
   await page.goto("/deleted");

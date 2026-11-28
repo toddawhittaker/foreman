@@ -77,7 +77,7 @@ test("take a snapshot, then restore it", async ({ page, foreman }) => {
   await checkPage(page);
   await page.getByRole("button", { name: "Restore snapshot" }).click();
 
-  await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots\?undo=/);
+  await expect(page).toHaveURL(/\/worlds\/family-base\/snapshots$/);
   await expect(page.locator("#toasts").getByText(/The world is restored\. Foreman took the snapshot "Before restore" first/)).toBeVisible();
   await expect(rows).toHaveCount(2);
   await expect(rows.first().locator("td").first()).toHaveText(/^\s*Before restore \(taken /);

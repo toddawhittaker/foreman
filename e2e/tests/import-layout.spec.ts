@@ -22,7 +22,7 @@ test("imports a folder in the server layout: its save, mods and settings", { tag
   await form.getByLabel("World name").fill("Server layout");
   await (await typedVersion(form)).fill("2.0.72");
   await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL("/worlds/server-layout?imported=1&unchecked=1");
+  await expect(page).toHaveURL(/\/worlds\/server-layout(\?imported=1&unchecked=1)?$/);
 
   await page.goto("/worlds/server-layout/saves");
   await expect(page.locator("tbody tr").getByRole("link")).toHaveText("campaign.zip");

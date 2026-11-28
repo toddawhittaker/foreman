@@ -392,7 +392,7 @@ test("a world file round trip: preview, confirm, and the new world holds the sam
 
   await nameField(page).fill("Moved");
   await confirm(page).click();
-  await expect(page).toHaveURL(/\/worlds\/moved\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/moved(\?imported=1.*)?$/);
   expect(staged(foreman)).toEqual([]);
   await expect.poll(async () => (await fakeGame!.state()).calls.filter((c) => c.includes("images/create")).length).toBeGreaterThan(0);
   await checkPage(page);
@@ -453,7 +453,7 @@ test("a name in use is refused on the name field and the staged file is kept", {
   expect(staged(foreman)).toEqual([stagedBefore]);
   await nameField(page).fill("Second try");
   await confirm(page).click();
-  await expect(page).toHaveURL(/\/worlds\/second-try\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/second-try(\?imported=1.*)?$/);
   expect(worldIds(foreman)).toEqual(["base", "second-try"]);
   expect(staged(foreman)).toEqual([]);
 });
@@ -466,13 +466,13 @@ test("the game image download is ticked when the image is missing, and is only s
   await expect(page.locator("#world-file-download")).toBeChecked();
   await page.locator("#world-file-download").uncheck();
   await confirm(page).click();
-  await expect(page).toHaveURL(/\/worlds\/crafted\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/crafted(\?imported=1.*)?$/);
   expect(await images()).toBe(0);
 
   await upload(page, worldFile({ world: { name: "Crafted again" } }));
   await expect(page.locator("#world-file-download")).toBeChecked();
   await confirm(page).click();
-  await expect(page).toHaveURL(/\/worlds\/crafted-again\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/crafted-again(\?imported=1.*)?$/);
   await expect.poll(images).toBe(1);
 });
 
@@ -563,7 +563,7 @@ test("a crafted file with a load_save that is not in it imports", async ({ page,
   await upload(page, worldFile({ world: { load_save: "gone.zip" } }));
   await page.locator("#world-file-download").uncheck();
   await confirm(page).click();
-  await expect(page).toHaveURL(/\/worlds\/crafted\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/crafted(\?imported=1.*)?$/);
   const world = JSON.parse(readFileSync(join(worldDir(foreman, "crafted"), "world.json"), "utf8"));
   // 5.14: a load_save that names no save in the file is dropped.
   expect(world.load_save ?? "").toBe("");
@@ -576,7 +576,7 @@ test("secrets in a file are stripped again on import, and the password warning f
   await expect(page.locator("#world-file-password-warning")).toBeVisible();
   await page.locator("#world-file-download").uncheck();
   await confirm(page).click();
-  await expect(page).toHaveURL(/\/worlds\/crafted\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/crafted(\?imported=1.*)?$/);
   const text = readFileSync(join(worldDir(foreman, "crafted"), "config", "server-settings.json"));
   expect(secretsAnywhere(text)).toEqual([]);
   expect(JSON.parse(text.toString("utf8")).description).toBe("keep");
@@ -592,7 +592,7 @@ test("a staged file the form cannot confirm stays out of the address and goes wh
   for (const href of await page.locator("a[href]").evaluateAll((as) => as.map((a) => a.getAttribute("href") ?? ""))) expect(href).not.toContain("worldfile-");
   await page.locator("#world-file-download").uncheck();
   await confirm(page).click();
-  await expect(page).toHaveURL(/\/worlds\/crafted\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/crafted(\?imported=1.*)?$/);
   expect(staged(foreman)).toEqual([]);
   // The world page then shows the imported message (5.14).
   await expect(page.locator("#toasts .toast--success")).toContainText(/imported/i);

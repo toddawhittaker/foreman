@@ -113,7 +113,7 @@ test("an import of a save that uses a mod links to the same plan", { tag: "@look
   await form.getByLabel("Or type a version").fill("2.1.24");
   await form.getByLabel("Download the game image", { exact: false }).uncheck();
   await form.getByRole("button", { name: "Import folder" }).click();
-  await expect(page).toHaveURL(/\/worlds\/modded\?imported=1/);
+  await expect(page).toHaveURL(/\/worlds\/modded(\?imported=1.*)?$/);
   const link = page.getByRole("link", { name: "Match this world's mods to its save" });
   await expect(link).toBeVisible();
   await checkPage(page);

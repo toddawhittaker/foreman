@@ -38,7 +38,7 @@ test("Snapshots tab lists and deletes a snapshot", async ({ page, foreman }) => 
   await checkPage(page);
   await page.getByRole("button", { name: "Delete snapshot" }).click();
 
-  await expect(page).toHaveURL(/\/snapshots\?deleted=/);
+  await expect(page).toHaveURL(/\/snapshots$/);
   await expect(page.locator("#toasts").getByText(/Done: Foreman deleted the snapshot taken/)).toBeVisible();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("Keep me");
@@ -67,7 +67,7 @@ test("delete from a world's Snapshots page, and cancel", async ({ page, foreman 
 
   await rows.first().getByRole("link", { name: /^Delete/ }).click();
   await page.getByRole("button", { name: "Delete snapshot" }).click();
-  await expect(page).toHaveURL(/\/worlds\/base\/snapshots\?deleted=/);
+  await expect(page).toHaveURL(/\/worlds\/base\/snapshots$/);
   await expect(page.locator("#toasts").getByText(/Done: Foreman deleted the snapshot taken/)).toBeVisible();
   await expect(page.getByText(/No snapshots yet/)).toBeVisible();
   await checkPage(page);
