@@ -467,9 +467,10 @@ test("a click on a planet's label on the large view's star map steps to that pla
   await expect(page.locator("#large-title")).toHaveText("Fulgora");
 });
 
-// DESIGN 8.8: Previous and Next sit in one place for every picture, with or without settings,
-// Vulcanus's box or the star map, so clicks in one spot keep stepping. fake-bare has no settings.
-test("the planet arrows stay in one place for every planet and the star map", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
+// DESIGN 8.8: Previous and Next sit in one place for every planet, with or without settings or
+// Vulcanus's box, so clicks in one spot keep stepping. fake-bare has no settings. The star map
+// has no settings column, so there Previous sits at the frame's start edge, the mirror of Next (#974).
+test("the planet arrows stay in one place for every planet, and on the star map Next does", { tag: "@looks" }, async ({ page, foreman, fakeGame }) => {
   await modded({ page, foreman, fakeGame: fakeGame! }, { bare: true });
   await section(page).getByRole("link", { name: /Nauvis.*opens the large view/ }).click();
   await expect(page.getByRole("dialog", { name: "Nauvis" })).toBeVisible();
@@ -481,23 +482,40 @@ test("the planet arrows stay in one place for every planet and the star map", { 
   // Nauvis; the star map shows the arrows too, in the same places (SPEC 5.6: it is the first step).
   const at = (b: typeof first.next) => ({ x: b!.x + b!.width / 2, y: b!.y + b!.height / 2 });
   const round = [...names.slice(1), "Star map", names[0]];
+  // On the star map Next keeps its place; Previous keeps it too unless the settings column
+  // shows beside planets, where it moves to the frame's start edge.
+  const onStarMap = async () => {
+    const now = await boxes();
+    expect(now.next).toEqual(first.next);
+    const frame = (await page.locator("#large-frame").boundingBox())!;
+    expect(now.prev!.x).toBeLessThanOrEqual(first.prev!.x);
+    expect(now.prev!.x - frame.x).toBeLessThanOrEqual(frame.x + frame.width - (now.next!.x + now.next!.width));
+    expect(now.prev!.y).toBe(first.prev!.y);
+    return now;
+  };
   for (const name of round) {
     await page.mouse.click(at(first.next).x, at(first.next).y);
     await expect(page.locator("#large-title")).toHaveText(name);
     await expect(page.locator("#large-next")).toBeVisible();
-    expect(await boxes()).toEqual(first);
+    if (name === "Star map") await onStarMap();
+    else expect(await boxes()).toEqual(first);
   }
-  // And back again with Previous, clicked in its one spot.
+  // And back again with Previous, clicked where it is.
+  let prevAt = first.prev;
   for (const name of ["Star map", ...[...names].reverse()]) {
-    await page.mouse.click(at(first.prev).x, at(first.prev).y);
+    await page.mouse.click(at(prevAt).x, at(prevAt).y);
     await expect(page.locator("#large-title")).toHaveText(name);
-    expect(await boxes()).toEqual(first);
+    if (name === "Star map") prevAt = (await onStarMap()).prev;
+    else {
+      expect(await boxes()).toEqual(first);
+      prevAt = first.prev;
+    }
   }
-  // The header's Star map button reaches the same step, arrows unmoved.
+  // The header's Star map button reaches the same step, Next unmoved.
   await dialog(page).getByRole("button", { name: "Star map", exact: true }).click();
   await expect(dialog(page)).toHaveAttribute("data-starmap", "");
   await expect(page.locator("#large-prev")).toBeVisible();
-  expect(await boxes()).toEqual(first);
+  await onStarMap();
   await page.screenshot({ path: `../screenshots/starmap-large-${test.info().project.name}.png` });
 
   // A count's note or error lies over the picture's top, so the header keeps one line: the
