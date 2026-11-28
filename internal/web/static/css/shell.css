@@ -374,6 +374,14 @@ a:hover {
   background: var(--color-secondary-hover);
 }
 
+/* Turned, the chevron's stroke is 8 px wide in its 16 px box, so on the
+   bar the box gives back the empty 4 px each side: the account button
+   stays as narrow as it was, and a long live state keeps its line at
+   320 px (DESIGN 7.5). */
+.site > .menu > summary::after {
+  margin-inline: calc(-1 * var(--space-1));
+}
+
 /* The two words wrap between them, never inside one. */
 .menu > summary > span {
   white-space: nowrap;

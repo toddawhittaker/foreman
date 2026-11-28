@@ -146,8 +146,10 @@ summary::-webkit-details-marker {
 }
 
 /* The disclosure chevron (DESIGN 7.8): one mark for every foldout, menu
-   and disclosure button, drawn from --i-chevron. It points down while
-   closed and up while open. A page may place it, never redraw it. */
+   and disclosure button, drawn from --i-chevron in the muted colour, so
+   orange stays for the primary action, the current place and focus. It
+   points down while closed and up while open. A page may place it, never
+   redraw it. */
 :is(.disclosure, .menu, .menu__langs, .plan-panel__list) > summary {
   list-style: none;
 }
@@ -163,7 +165,7 @@ summary::-webkit-details-marker {
   inline-size: 1rem;
   block-size: 1rem;
   vertical-align: -0.1875em;
-  background: currentColor;
+  background: var(--color-text-muted);
   mask: var(--i-chevron) center / contain no-repeat;
   transform: rotate(90deg);
   transition: transform var(--dur-2) var(--ease);

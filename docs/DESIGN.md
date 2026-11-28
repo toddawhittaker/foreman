@@ -2023,8 +2023,9 @@ it a card or a plate alike; the class is `card` or `panel`.
 - **Foldouts** (`details.disclosure`). One style for every foldout; the
   class stays `disclosure`. The summary is the label followed by the
   disclosure chevron, the one arrow every disclosure, menu and disclosure
-  button draws (`controls.css`, from `--i-chevron`, 16 px, in the label's
-  colour): it points down when closed and up when open. No disclosure
+  button draws (`controls.css`, from `--i-chevron`, 16 px, in `text-muted`,
+  so orange stays for the primary action, the current place and focus):
+  it points down when closed and up when open. No disclosure
   shows the browser's own triangle. The label is `heading` at weight 600, with no face, border or
   shadow at rest. Under a pointer that can hover (`@media (hover: hover)`) the row fills with
   `secondary-hover` at `--radius`; its side padding of `--space-1` and a matching negative
