@@ -273,6 +273,21 @@ func (s *server) tokensPage(ctx context.Context, u store.User, f TokenForm) (API
 	return p, nil
 }
 
+// hasRevoked reports whether a revoked token of this name is listed for the
+// signed-in user: their own, or any when they are an admin.
+func (p APITokensPage) hasRevoked(name string) bool {
+	rows := p.Mine
+	if p.Admin {
+		rows = p.All
+	}
+	for _, t := range rows {
+		if t.Name == name && t.Revoked() {
+			return true
+		}
+	}
+	return false
+}
+
 func (s *server) handleAPITokens(w http.ResponseWriter, r *http.Request, u store.User) {
 	p, err := s.tokensPage(r.Context(), u, TokenForm{Scope: auth.ScopeRead})
 	if err != nil {
@@ -282,7 +297,11 @@ func (s *server) handleAPITokens(w http.ResponseWriter, r *http.Request, u store
 	q := r.URL.Query()
 	switch d := q.Get("done"); d {
 	case tokenDoneRevoked:
-		p.Done, p.DoneName = d, q.Get("name")
+		// Only a token that is really revoked can be named, so a crafted
+		// link cannot show made-up text; otherwise there is no toast.
+		if name := q.Get("name"); p.hasRevoked(name) {
+			p.Done, p.DoneName = d, name
+		}
 	case tokenDoneMCPOn, tokenDoneMCPOff, tokenDoneAPIOn, tokenDoneAPIOff:
 		p.Done = d
 	}

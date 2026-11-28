@@ -201,10 +201,15 @@ func TestGeneralLoweringRetentionDeletesNothingAndCounts(t *testing.T) {
 		t.Fatalf("%d snapshots after saving, %v; want 4", len(list), err)
 	}
 	body := hn.get(generalPath()+"?done=saved", withCookie(c)).Body.String()
-	// The count sums up the save, so it is in the toast (DESIGN 6, "Toasts").
+	// The toast closes, so the count, the one record of what the save will
+	// remove, stays in the page as plain text (DESIGN 6, "Toasts").
 	toast := between(body, `<div id="toasts" class="toasts">`, "</div></div>")
-	if !strings.Contains(toast, "Saved. The new settings apply from now on.") || !strings.Contains(toast, "3 automatic snapshots will be removed") || !strings.Contains(toast, "Worlds affected: 1.") {
-		t.Errorf("the page does not count what will go:\n%s", toast)
+	if !strings.Contains(toast, "Saved. The new settings apply from now on.") || strings.Contains(toast, "snapshots will be removed") {
+		t.Errorf("the toast is not the short Saved:\n%s", toast)
+	}
+	note := between(body, `id="general-trim"`, "</div>")
+	if !strings.Contains(note, "3 automatic snapshots will be removed") || !strings.Contains(note, "Worlds affected: 1.") {
+		t.Errorf("the page does not count what will go:\n%s", note)
 	}
 	// The next automatic snapshot trims the world to the new figure.
 	hn.clock.Advance(time.Minute)

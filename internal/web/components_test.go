@@ -126,3 +126,35 @@ func TestFormFootMarkup(t *testing.T) {
 		}
 	}
 }
+
+// The error summary is an h2 by default and an h3 where it sits inside a
+// section that is already an h2 (the Users page's password form), so no
+// heading level is skipped or repeated.
+func TestErrorSummaryHeadingLevel(t *testing.T) {
+	problems := []Problem{{FieldID: "a", Message: i18n.M("users.password.busy")}, {FieldID: "b", Message: i18n.M("users.password.busy")}}
+	const list = `
+  <ul>
+    <li><a href="#a">Foreman is busy checking other passwords. Try again in a moment.</a></li>
+    <li><a href="#b">Foreman is busy checking other passwords. Try again in a moment.</a></li>
+  </ul>
+</div>
+`
+	const open = "\n<div class=\"message message--error\" id=\"error-summary\" tabindex=\"-1\" autofocus>\n  "
+	const title = `id="error-summary-heading"><strong>Error:</strong> Fix 2 problems to continue`
+	for name, level := range map[string]string{"summary": "2", "summary-h3": "3"} {
+		got, err := renderComponent(t, name, problems)
+		if err != nil {
+			t.Fatal(err)
+		}
+		want := open + "<h" + level + " " + title + "</h" + level + ">" + list
+		if got != want {
+			t.Errorf("%s:\n got %q\nwant %q", name, got, want)
+		}
+	}
+	r := newTestRenderer(t)
+	_, body := render(t, r, pageCase{status: 200, user: "alice", page: UsersPage{MyKind: "password", Form: PasswordForm{NewError: i18n.M("users.password.busy")}}})
+	section := between(body, `aria-labelledby="password-heading"`, "</section>")
+	if !strings.Contains(section, `<h3 id="error-summary-heading">`) || strings.Count(section, "<h2") != 1 {
+		t.Errorf("the password section's headings: %q", section)
+	}
+}

@@ -407,7 +407,7 @@
    breaks, and still break inside a word when a 32-character value is wider. The
    action keeps a floor of 16 characters and wraps only between words, so a long
    label in another language (German runs to 52 characters) never pushes the table
-   past its container. */
+   past its container; from 64rem the container has room to keep it on one line. */
 @container (width > 52rem) {
   .audit-table .audit-time {
     white-space: nowrap;
@@ -423,6 +423,11 @@
     overflow-wrap: anywhere;
   }
 
+  /* A user name is a word people read, so its floor fits the longest ordinary one. */
+  .audit-table .audit-user {
+    min-inline-size: 20ch;
+  }
+
   .audit-table .audit-token .badge {
     white-space: normal;
     overflow-wrap: anywhere;
@@ -434,13 +439,13 @@
 }
 
 @container (width > 64rem) {
-  .audit-table .audit-world {
+  .audit-table :is(.audit-world, .audit-action) {
     white-space: nowrap;
   }
 
   .audit-table .audit-detail {
     inline-size: 100%;
-    min-inline-size: 15rem;
+    min-inline-size: 10rem;
   }
 }
 
@@ -549,10 +554,6 @@
 
   .audit-table .audit-time time > span:last-child:not(.nowrap) {
     color: var(--color-text-muted);
-  }
-
-  .audit-table .audit-action {
-    white-space: nowrap;
   }
 }
 

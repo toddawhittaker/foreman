@@ -219,3 +219,13 @@ test.describe("with FOREMAN_API=off", () => {
     await checkPage(page);
   });
 });
+
+// A done=revoked link shows a toast only for a token that really is revoked,
+// so a crafted link cannot put its own words on the page.
+test("a crafted revoked link shows no made-up name", async ({ page }) => {
+  await createAdmin(page);
+  await page.goto("/settings/api-tokens?done=revoked&name=Your%20password%20was%20reset");
+  await expect(page.getByRole("heading", { level: 1 })).toHaveText("API tokens");
+  await expect(page.locator("#toasts > [data-toast]")).toHaveCount(0);
+  await expect(page.locator("main")).not.toContainText("Your password was reset");
+});

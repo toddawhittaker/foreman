@@ -31,7 +31,7 @@
       <p class="tip__text" id="general-snapshots-tip">{{t "general.snapshots.text"}}</p>
     </div>
     <div class="setting-row__body">
-      {{- if and .Trims (not .Saved)}}
+      {{- if .Trims}}
       <div class="message message--note" id="general-trim">
         <p><strong>{{t "common.label.note"}}</strong> {{t "general.trim.snapshots" "count" .Trim.Snapshots}} {{t "general.trim.worlds" "count" .Trim.Worlds}}</p>
       </div>

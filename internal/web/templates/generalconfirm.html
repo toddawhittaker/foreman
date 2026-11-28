@@ -1,13 +1,13 @@
 {{define "title"}}{{t "general.confirm.question"}}{{end}}
 
 {{define "head-crumb"}}{{template "crumb" (crumbs "" (t "common.nav.settings") generalPath (t "common.menu.general"))}}{{end}}
-{{define "head-title"}}{{t "general.confirm.question"}}{{end}}
+{{define "head-title"}}<span id="confirm-heading">{{t "general.confirm.question"}}</span>{{end}}
 {{define "head-nav"}}{{template "settings-tabs" "general-confirm"}}{{end}}
 
 {{define "content" -}}
 {{template "pagehead" $}}
 {{with .Page}}
-<section class="confirm">
+<section class="confirm" aria-labelledby="confirm-heading">
   <p>{{t "common.confirm.will"}}</p>
   <ul>
     <li id="general-trim">{{t "general.trim.snapshots" "count" .Trim.Snapshots}} {{t "general.trim.worlds" "count" .Trim.Worlds}}</li>

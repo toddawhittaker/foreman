@@ -839,10 +839,11 @@ main:has(> .gate) {
 /* A page with a bar stuck to the window's foot keeps that much room clear
    when it scrolls a focused control into view, so focus never sits behind
    the bar (WCAG 2.4.11): a 44 px button, its 12 px padding and the
-   selection bar's 16 px lift. On a phone Generate's three actions may
-   stack at large text, so its room grows with them, to half the window. */
+   selection bar's 16 px lift. Where the bar's note and actions wrap at
+   large text or a narrow window, its room grows with them, to half the
+   window. */
 html:has(.form-foot, .select-bar) {
-  --foot-bar-room: 5.5rem;
+  --foot-bar-room: min(11rem, 50dvh);
 }
 
 /* Each page's own bar sets only its room, here and in its page file, so the

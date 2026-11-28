@@ -1,6 +1,7 @@
 package web
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strings"
@@ -120,5 +121,29 @@ func TestTokenAuditQuotes(t *testing.T) {
 	got := tokenAudit(store.APIToken{ID: 7, Name: "t", Owner: "eve scope=admin", Scope: "read"})
 	if want := `token_id=7 token="t" owner="eve scope=admin" scope=read`; got != want {
 		t.Errorf("got %s, want %s", got, want)
+	}
+}
+
+// A done=revoked return names a token only when that token is revoked, so a
+// crafted link cannot put made-up text in the toast (like done=renewed).
+func TestAPITokensRevokedToastIgnoresSpoofedName(t *testing.T) {
+	hn := newHarness(t, nil)
+	alice := hn.signIn()
+	hn.createToken(alice, "Claude", auth.ScopeRead)
+	tok := hn.tokenNamed("Claude")
+	spoof := doneURL(tokenDoneRevoked, "Your password was reset")
+	if body := hn.get(spoof, withCookie(alice)).Body.String(); strings.Contains(body, "Your password was reset") || strings.Contains(body, `class="toast `) {
+		t.Error("a name that is no revoked token reached the page")
+	}
+	// A working token of that name is no revoked token either.
+	if body := hn.get(doneURL(tokenDoneRevoked, "Claude"), withCookie(alice)).Body.String(); strings.Contains(body, `class="toast `) {
+		t.Error("a working token's name reached the page as revoked")
+	}
+	if _, err := auth.NewAPITokens(hn.store, hn.clock.Now).Revoke(context.Background(), tok.ID); err != nil {
+		t.Fatal(err)
+	}
+	body := hn.get(doneURL(tokenDoneRevoked, "Claude"), withCookie(alice)).Body.String()
+	if !strings.Contains(body, `class="toast toast--success"`) || !strings.Contains(body, "Claude") {
+		t.Error("the real revoke lost its toast")
 	}
 }
