@@ -24,7 +24,8 @@ const (
 // AuditSnapshotDelete is the audit action for a deleted snapshot (SPEC 6.12).
 const AuditSnapshotDelete = "snapshot-delete"
 
-// fromAll marks a delete started from the Snapshots tab, so it returns there.
+// fromAll marks a restore or delete started from the Snapshots tab, so it
+// keeps that area highlighted and returns there.
 const fromAll = "all"
 
 func snapshotDeletePath(id, snap string) string {
@@ -74,7 +75,9 @@ func (AllSnapshotsPage) DeletePath(id, snap string) string {
 }
 
 // RestorePath is the confirmation page for restoring one snapshot.
-func (AllSnapshotsPage) RestorePath(id, snap string) string { return restorePath(id, snap) }
+func (AllSnapshotsPage) RestorePath(id, snap string) string {
+	return restorePath(id, snap) + "?from=" + fromAll
+}
 
 // WorldPath is the world's page.
 func (AllSnapshotsPage) WorldPath(id string) string { return worldPath(id) }

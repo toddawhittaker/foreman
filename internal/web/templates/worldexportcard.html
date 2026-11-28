@@ -6,9 +6,10 @@
       <h2 id="export-heading">{{t "worldfile.export.heading"}}</h2>
       {{template "tip-icon" (tip "export-notes" (t "worldfile.export.heading"))}}
     </div>
-    <p class="hint" id="export-hint">{{t "worldfile.export.text"}}{{if not .World.SizeUnknown}} {{t "worldfile.export.size" "size" (bytes .World.DiskBytes)}}{{end}}</p>
   </div>
   <div class="world-share__body">
+    {{- /* The intro sits under the title band, as on every plate (DESIGN 7.8). */}}
+    <p class="hint" id="export-hint">{{t "worldfile.export.text"}}{{if not .World.SizeUnknown}} {{t "worldfile.export.size" "size" (bytes .World.DiskBytes)}}{{end}}</p>
     <fieldset>
       <legend>{{t "worldfile.export.saves.legend"}}</legend>
       <label class="check"><input type="radio" id="export-saves-all" name="saves" value="all" checked> {{t "worldfile.export.saves.all"}}</label>

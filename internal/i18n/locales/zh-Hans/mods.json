@@ -335,6 +335,9 @@
   "mods.plan.removed": {
     "other": "已移除 {mod}。计划中有 {count} 个模组。"
   },
+  "mods.plan.added": {
+    "other": "计划已更新：已加入 {mod}。将更改 {count} 个模组。"
+  },
   "mods.plan.redrawn_conflicts": {
     "other": "计划已更新：存在 {count} 个冲突，因此无法应用。"
   },

@@ -391,6 +391,11 @@
     "few": "Odebrán {mod}. Plán má {count} mody.",
     "other": "Odebrán {mod}. Plán má {count} modů."
   },
+  "mods.plan.added": {
+    "one": "Plán aktualizován: přidán {mod}. Mění se {count} mod.",
+    "few": "Plán aktualizován: přidán {mod}. Mění se {count} mody.",
+    "other": "Plán aktualizován: přidán {mod}. Mění se {count} modů."
+  },
   "mods.plan.redrawn_conflicts": {
     "one": "Plán aktualizován: má konflikt, a proto ho nelze použít.",
     "few": "Plán aktualizován: má {count} konflikty, a proto ho nelze použít.",

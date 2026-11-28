@@ -2,15 +2,13 @@
 
 {{define "scripts"}}<link rel="stylesheet" href="{{static "factorymap.css"}}"><script src="{{static "viewer.js"}}" defer></script><script src="{{static "factorymap.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-crumb"}}{{with .Page}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "factorymap.tab"))}}{{end}}{{end}}
+{{define "head-title"}}{{with .Page}}{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") .Tabs.Path .World.Name "" (t "factorymap.tab"))}}
-<div class="title-row">
-<h1>{{.World.Name}}{{if .World.Active}} <span class="badge badge--active">{{t "worlds.badge.active"}}</span>{{end}}</h1>
-</div>
-{{template "rail" $}}
+{{template "pagehead" $}}
 {{- /* News of a drawing that ends while the page is open; outside the region the script replaces, so it is said once (SPEC 5.16). */}}
 <p class="visually-hidden" role="status" id="factorymap-news"></p>
 <div class="factorymap-page">
@@ -28,7 +26,7 @@
   </fieldset>
   <label class="check"><input type="checkbox" name="skip_online" value="on"{{if .View.Mode.SkipOnline}} checked{{end}} aria-describedby="fm-skip-hint"><span>{{t "factorymap.mode.skip_online"}}</span></label>
   <p class="hint" id="fm-skip-hint">{{t "factorymap.mode.skip_online_hint"}}</p>
-  <div class="actions"><button type="submit" class="button">{{t "factorymap.mode.save"}}</button></div>
+  {{template "form-foot" (formFoot "submit" (t "factorymap.mode.save"))}}
 </form>
 {{- end}}
 </div>
@@ -42,7 +40,7 @@
 {{- $v := .View}}
 <div class="factorymap__summary" data-news>
 {{- if eq $v.State "drawing"}}
-  <p class="message message--note" aria-busy="true">{{t "factorymap.state.drawing"}}</p>
+  <p aria-busy="true">{{template "working" (t "factorymap.state.drawing")}}</p>
 {{- else if eq $v.State "failed"}}
   <div class="message message--error">
     <p><strong>{{t "factorymap.state.failed"}}</strong> {{template "factorymap-failure" $v.Failure}}</p>
@@ -59,11 +57,6 @@
   <p class="hint">{{tHTML "factorymap.state.drawn" "when" (momentUTCSeconds $v.Drawing.DrawnAt) "save" (code $v.Drawing.Basis.Save) "version" $v.Drawing.GameVersion}}</p>
 {{- end}}
 </div>
-{{- if not .Refused.IsZero}}
-<div class="message message--error" id="fm-refused" tabindex="-1" autofocus>
-  <p>{{msg .Refused}}</p>
-</div>
-{{- end}}
 {{- if and .CanDraw (ne $v.State "drawing")}}
 <form method="post" action="{{.DrawPath}}" class="factorymap__draw">
   {{- if .NeedMemory}}

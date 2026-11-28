@@ -93,7 +93,7 @@ func TestSnapshotsTabListsEveryWorld(t *testing.T) {
 	for _, want := range []string{
 		`aria-current="page">Snapshots</a>`, `<h3 id="world-` + id + `"><a href="` + worldPath(id) + `">Base</a></h3>`, "First", "Second", "by alice",
 		`href="` + snapshotDeletePath(id, first.Name) + `?from=all"`,
-		`href="` + restorePath(id, first.Name) + `"`,
+		`href="` + restorePath(id, first.Name) + `?from=all"`,
 		`name="snap" value="` + id + "/" + first.Name + `"`,
 		"<dt>Snapshots add</dt>",
 	} {
@@ -145,9 +145,7 @@ func TestSnapshotDeleteConfirmsThenDeletesAndAudits(t *testing.T) {
 		t.Errorf("audit %q", got)
 	}
 	done := hn.get(rec.Header().Get("Location"), withCookie(c)).Body.String()
-	if !strings.Contains(done, `Foreman deleted the snapshot taken <time datetime="2026-11-02T12:00:00Z">2026-11-02 12:00:00 UTC</time>.`) {
-		t.Error("no done message")
-	}
+	wantToast(t, "after the delete", done, false, "Foreman deleted the snapshot taken 2026-11-02 12:00:00 UTC.")
 
 	// From the tab, the delete returns to the tab.
 	rec = hn.post(snapshotDeletePath(id, second.Name), map[string][]string{"from": {"all"}}, withCookie(c))

@@ -483,7 +483,10 @@ func TestWorldFileNoSpaceKeepsThePreview(t *testing.T) {
 	if rec.Code != http.StatusInsufficientStorage {
 		t.Fatalf("status %d, want 507", rec.Code)
 	}
-	wfWantAll(t, "preview", rec.Body.String(), `id="world-file-refusal"`, `value="`+world.PrefixWorldFile+`abc"`, `id="act-import-world-file"`)
+	if !strings.Contains(toastRegion(rec.Body.String()), "toast--error") {
+		t.Errorf("preview: no error toast\n%s", rec.Body)
+	}
+	wfWantAll(t, "preview", rec.Body.String(), `value="`+world.PrefixWorldFile+`abc"`, `id="act-import-world-file"`)
 }
 
 // SPEC 5.14: at most two staged world files wait; a third upload removes the

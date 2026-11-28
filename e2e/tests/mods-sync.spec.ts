@@ -1,4 +1,4 @@
-import { test, expect, checkPage, setUpModsWorld, doneBox, live, makeZip, version20, openModTools } from "./foreman.js";
+import { test, expect, checkPage, setUpModsWorld, doneBox, live, makeZip, version20, openModTools, redrawn } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -289,9 +289,7 @@ test("ticking or clearing an offer moves no box and does not scroll", async ({ p
     // The admin scrolls the box into view first; only the redraw must not scroll.
     await target.scrollIntoViewIfNeeded();
     const before = await layout();
-    const updates = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/mods/plan"));
-    await target[act]();
-    await updates;
+    await redrawn(page, "mod-plan", () => target[act]());
     await expect(page.locator("#announcer")).toContainText("Plan updated");
     await expect(target).toBeFocused();
     const after = await layout();
@@ -314,6 +312,8 @@ test("ticking or clearing an offer moves no box and does not scroll", async ({ p
 
       // An offer with an offer of its own: the new one goes at the end.
       let now = await step(box("fp-05"), "check", `${label} tick fp-05`);
+      // The tick's sentence names what it adds.
+      await expect(page.locator("#announcer")).toHaveText(/^Plan updated: adds fp-05\. \d+ mods change\.$/);
       const ids = Object.keys(now.boxes);
       expect(ids.at(-1), label).toBe(await box("fp-00x", "fp-05").getAttribute("id"));
       await step(box("fp-07"), "check", `${label} tick fp-07`);

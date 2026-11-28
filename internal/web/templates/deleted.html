@@ -1,12 +1,12 @@
 {{define "title"}}{{t "worlds.deleted.title"}}{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" "deleted"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.deleted.title"))}}{{end}}
+{{define "head-title"}}{{t "worlds.deleted.title"}}{{end}}
+{{define "head-nav"}}{{template "worlds-area-tabs" "deleted"}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "worlds.deleted.title"))}}
-<h1>{{t "worlds.deleted.title"}}</h1>
-{{template "rail" $}}
+{{template "pagehead" $}}
 <p class="page-intro">{{t "worlds.deleted.intro"}}</p>
 {{- range .Worlds}}
 <section class="panel" aria-labelledby="world-{{.ID}}">
@@ -29,7 +29,9 @@
   </table>
 </section>
 {{- else}}
-<p class="empty empty--art empty--deleted">{{t "worlds.deleted.empty"}}</p>
+<section class="panel">
+  {{template "empty" (empty "deleted" (t "worlds.deleted.empty"))}}
+</section>
 {{- end}}
 {{- if .More}}
 <div class="actions"><a href="{{.AllPath}}">{{t "worlds.deleted.older"}}</a></div>
@@ -37,4 +39,3 @@
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

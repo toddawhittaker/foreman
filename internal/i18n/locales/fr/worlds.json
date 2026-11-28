@@ -144,7 +144,6 @@
   "worlds.list.all": "Tous les mondes",
   "worlds.list.deleted_gone": "{name} a été supprimé. Il n’avait aucun instantané, il ne peut donc pas être restauré.",
   "worlds.list.deleted_kept": "{name} a été supprimé. Ses instantanés se trouvent dans « Mondes supprimés ».",
-  "worlds.list.deleted_link": "Aller aux mondes supprimés",
   "worlds.list.empty": "Aucun monde pour l’instant. Importez un dossier de sauvegardes ou envoyez un fichier de sauvegarde pour créer votre premier monde.",
   "worlds.list.upload_save": "Envoyer une sauvegarde",
   "worlds.list.import": "Importer un monde",

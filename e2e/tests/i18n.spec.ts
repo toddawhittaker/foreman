@@ -450,7 +450,7 @@ async function setUpMatrix(page: Page, foreman: Foreman, fakeGame: FakeGame): Pr
   await page.goto("/worlds/base/snapshots");
   await page.getByLabel("Label (optional)").fill("Before the big rocket launch rebuild");
   await page.getByRole("button", { name: "Take snapshot" }).click();
-  await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
+  await expect(page.locator("#toasts").getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
 
   // The confirmation pages for one snapshot, and for ticking several, by their
   // links, read here in English while the controls have English names.
@@ -725,7 +725,7 @@ test.describe("a wide time zone at 320 px and 200% text", () => {
       seedWorld(foreman);
       await page.goto("/worlds/base/snapshots");
       await page.getByRole("button", { name: "Take snapshot" }).click();
-      await expect(page.getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
+      await expect(page.locator("#toasts").getByText(/^Done: Foreman took the snapshot/)).toBeVisible();
       await chooseLanguage(page.context(), lang, foreman.url);
       await sweep(page, lang, ["/worlds/base/saves", "/worlds/base/snapshots", "/snapshots"], failures);
       await page.goto("/worlds/base/saves");

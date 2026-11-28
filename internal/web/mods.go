@@ -1026,6 +1026,10 @@ type planForm struct {
 	// Removed names the mod a click just took out of the plan, for the
 	// sentence the redraw announces. The link carries it; the plan does not.
 	Removed string
+	// Added names the offer a tick just put in the plan, for the same
+	// sentence. It comes from the box htmx names as the trigger, never
+	// from the form.
+	Added string
 	// AlsoDisable and AlsoRemove are installed mods a conflict's fix turns
 	// off in the same plan; Fixed names the one a click just added, for
 	// the sentence the redraw announces (SPEC 9.2, 17.9).
@@ -1348,6 +1352,8 @@ func (p ModPlanPage) Announce() i18n.Msg {
 		return i18n.M("mods.plan.fixed", "count", p.Count())
 	case p.Form.Removed != "":
 		return i18n.M("mods.plan.removed", "mod", p.Form.Removed, "count", p.Count())
+	case p.Form.Added != "":
+		return i18n.M("mods.plan.added", "mod", p.Form.Added, "count", p.Count())
 	}
 	return i18n.M("mods.plan.redrawn", "count", p.Count())
 }
@@ -1840,6 +1846,7 @@ func (s *server) handlePlanRedraw(w http.ResponseWriter, r *http.Request, u stor
 		s.page(w, r, http.StatusBadRequest, u.Username, ErrorPage{Status: http.StatusBadRequest})
 		return
 	}
+	f.Added = tickedOffer(r.Header.Get("HX-Trigger"), f.Optional)
 	token := r.PostForm.Get(draftField)
 	if !isHTMX(r) {
 		token = s.drafts.keep(token, u.ID, sum.ID, f)
@@ -1853,6 +1860,17 @@ func (s *server) handlePlanRedraw(w http.ResponseWriter, r *http.Request, u stor
 	p := s.planPage(r.Context(), sum, f, s.carriedCountdown(r.Context(), r.PostForm))
 	p.Draft, p.Redraw = s.drafts.keep(token, u.ID, sum.ID, p.Form), true
 	s.page(w, r, http.StatusOK, u.Username, p)
+}
+
+// tickedOffer is the offer whose box, named by its id in trigger, is
+// ticked in optional; "" when the redraw came from anything else.
+func tickedOffer(trigger string, optional []string) string {
+	for _, n := range optional {
+		if trigger != "" && modID(n, "optional") == trigger {
+			return n
+		}
+	}
+	return ""
 }
 
 // carriedCountdown is the stop countdown a plan page shows: the one v

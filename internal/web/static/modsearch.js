@@ -46,18 +46,36 @@
   // Enter searches at once, but the typing's delayed search for the same text
   // still fires after it; by then a page control may have asked for another
   // page, which that late reply would replace with page 1. A search for the
-  // text already searched is dropped.
+  // text already searched is dropped; one that got no answer does not
+  // count, so typing that text again sends it again.
   let searched = null;
+  const isSearch = (elt) => {
+    const box = document.getElementById("mod-search");
+    return !!box && (elt === box || elt === box.form);
+  };
   document.addEventListener("htmx:confirm", (e) => {
     const elt = e.detail.elt;
+    if (!isSearch(elt)) return;
     const box = document.getElementById("mod-search");
-    if (!box || (elt !== box && elt !== box.form)) return;
     if (elt === box && box.value === searched) {
       e.preventDefault();
       return;
     }
     searched = box.value;
   });
+  for (const ev of ["htmx:sendError", "htmx:responseError", "htmx:timeout"]) {
+    document.addEventListener(ev, (e) => {
+      if (isSearch(e.detail.elt)) searched = null;
+    });
+  }
+  // The review after Generate says the world was made (SPEC 5.12). The mark
+  // in the address is dropped once drawn, so a reload or Back does not say
+  // it again.
+  const here = new URL(location.href);
+  if (here.pathname.endsWith("/mods/plan") && here.searchParams.has("generated")) {
+    here.searchParams.delete("generated");
+    history.replaceState(history.state, "", here);
+  }
   document.addEventListener("click", (e) => {
     if (e.target.closest?.('#act-review-plan[aria-disabled="true"], #flow-next[aria-disabled="true"]')) e.preventDefault();
   });

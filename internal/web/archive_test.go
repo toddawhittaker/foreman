@@ -154,9 +154,10 @@ func TestArchiveRefusesTheActiveWorld(t *testing.T) {
 		t.Errorf("active world page:\n%s", page)
 	}
 	rec := r.post(worldPath(active)+"/archive", url.Values{}, withCookie(r.cookie))
-	if rec.Code != http.StatusConflict || !strings.Contains(rec.Body.String(), `id="archive-error"`) {
+	if rec.Code != http.StatusConflict {
 		t.Errorf("forced archive: %d\n%s", rec.Code, rec.Body)
 	}
+	wantToast(t, "forced archive", rec.Body.String(), true, "This is the active world, and the active world cannot be archived. Switch to another world first.")
 	if r.archived(active) || len(r.auditOf(AuditWorldArchive)) != 0 {
 		t.Error("the active world was archived or audited")
 	}

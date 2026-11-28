@@ -1,4 +1,4 @@
-import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, live, version20 } from "./foreman.js";
+import { test, expect, planRow, checkPage, setUpModsWorld, doneBox, live, version20, redrawn } from "./foreman.js";
 import type { Page } from "@playwright/test";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
@@ -230,10 +230,30 @@ test("choosing a release moves nothing in its row", async ({ page, foreman, fake
       await page.goto("/worlds/base/mods/plan?kind=install&name=fp-ver");
       const before = await boxes();
       const scrollY = await page.evaluate(() => window.scrollY);
-      await page.getByLabel("Version of fp-ver").selectOption("1.0.0");
-      await expect(planRow(page, "fp-ver")).toContainText("1.0.0");
+      // The boxes are read once the redraw is in, not while the old plan still shows.
+      await redrawn(page, "mod-plan", async () => {
+        const reply = page.waitForResponse((r) => r.request().method() === "POST" && r.url().includes("/mods/plan/redraw"));
+        await page.getByLabel("Version of fp-ver").selectOption("1.0.0");
+        await reply;
+      });
+      await expect(page.getByLabel("Version of fp-ver")).toHaveValue("1.0.0");
       expect(await boxes(), `${size.width} ${theme}`).toEqual(before);
       expect(await page.evaluate(() => window.scrollY)).toBe(scrollY);
     }
   }
+});
+
+// The review after Generate from a favorite says the world was made once:
+// the address drops the mark after the first draw, so a reload or Back
+// does not say it again (SPEC 5.12, EPIC-fixes-20 ruling 6).
+test("the world-made toast shows once, not again on reload", async ({ page, foreman, fakeGame, fakePortal }) => {
+  await fakePortal!.add("fp-ver", "1.0.0");
+  await setUpModsWorld(page, foreman, fakeGame!, world);
+  await page.goto("/worlds/base/mods/plan?kind=install&name=fp-ver&generated=1");
+  await expect(page.locator("#toasts [data-toast]")).toContainText("from the favorite.");
+  await expect.poll(() => new URL(page.url()).searchParams.has("generated")).toBe(false);
+  expect(new URL(page.url()).searchParams.get("name")).toBe("fp-ver");
+  await page.reload();
+  await expect(page.getByRole("heading", { level: 1, name: "Install fp-ver in Base?" })).toBeVisible();
+  await expect(page.locator("#toasts [data-toast]")).toHaveCount(0);
 });

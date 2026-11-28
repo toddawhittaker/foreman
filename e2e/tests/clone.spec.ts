@@ -31,7 +31,7 @@ test("clones the active world and keeps its save, in three clicks from the Serve
 
   await page.getByRole("button", { name: "Clone world" }).click();
   await expect(page).toHaveURL("/worlds/base-copy?cloned=base");
-  await expect(page.locator(".message--success")).toHaveText("Done: Cloned Base as Base (copy).");
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Cloned Base as Base (copy).");
   await expectWithin(clicks, 3, "clone a world, keeping the save");
   await checkPage(page);
 
@@ -53,7 +53,7 @@ test("a fresh map has no save and a random seed", { tag: "@looks" }, async ({ pa
   await page.getByRole("button", { name: "Clone world" }).click();
 
   await expect(page).toHaveURL("/worlds/clean-slate?cloned=base");
-  await expect(page.locator(".message--success")).toHaveText("Done: Cloned Base as Clean slate.");
+  await expect(page.locator("#toasts .toast--success")).toHaveText("Done: Cloned Base as Clean slate.");
   expect(savesOf(foreman.dataDir, "clean-slate")).toEqual([]);
   const meta = worldJSON(foreman.dataDir, "clean-slate");
   expect(meta.load_save).toBeUndefined();

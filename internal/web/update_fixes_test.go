@@ -90,24 +90,27 @@ func TestRefusedStartAfterUpdateOffersStartAnyway(t *testing.T) {
 	}
 }
 
-// DESIGN 7.5: the refusal box takes focus, unless the field summary shows.
-func TestUpdateAndRollbackErrorTakesFocus(t *testing.T) {
+// DESIGN 6, "Toasts": the refusal is an error toast, which never takes
+// focus; the field summary, when it shows, still does (DESIGN 7.5).
+func TestUpdateAndRollbackErrorIsAToast(t *testing.T) {
 	sum := world.Summary{ID: "base", Name: "Base", GameVersion: "2.0.1"}
-	focused := `id="action-error" tabindex="-1" autofocus`
+	busy := "Another operation is running on this world. Wait for it to finish, then try again."
 	pages := []struct {
-		name  string
-		page  Page
-		focus bool
+		name    string
+		page    Page
+		summary bool
+		text    string
 	}{
-		{"update refusal", UpdatePage{World: sum, Refusal: i18n.M("worlds.error.busy")}, true},
-		{"update refusal with field errors", UpdatePage{World: sum, Refusal: i18n.M("worlds.error.busy"), VersionError: i18n.M("server.error.version_not_newer")}, false},
-		{"rollback error", RollbackPage{World: sum, Error: i18n.M("server.error.no_rollback")}, true},
+		{"update refusal", UpdatePage{World: sum, Refusal: i18n.M("worlds.error.busy")}, false, busy},
+		{"update refusal with field errors", UpdatePage{World: sum, Refusal: i18n.M("worlds.error.busy"), VersionError: i18n.M("server.error.version_not_newer")}, true, busy},
+		{"rollback error", RollbackPage{World: sum, Error: i18n.M("worlds.error.busy")}, false, busy},
 	}
 	for _, c := range pages {
 		t.Run(c.name, func(t *testing.T) {
 			html := pageHTML(t, c.page)
-			if !strings.Contains(html, `id="action-error" tabindex="-1"`) || strings.Contains(html, focused) != c.focus {
-				t.Errorf("focus %v wanted:\n%s", c.focus, html)
+			wantToast(t, c.name, html, true, c.text)
+			if strings.Contains(html, `id="action-error"`) || strings.Contains(html, `id="error-summary"`) != c.summary {
+				t.Errorf("summary %v wanted:\n%s", c.summary, html)
 			}
 		})
 	}

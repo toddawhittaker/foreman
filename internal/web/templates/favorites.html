@@ -3,29 +3,14 @@
 {{define "scripts"}}<script src="{{static "dropzone.js"}}" defer></script>
 <script src="{{static "copy.js"}}" defer></script>{{end}}
 
-{{define "rail"}}{{template "worlds-area-tabs" "favorites"}}{{end}}
+{{define "head-crumb"}}{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "favorites.title"))}}{{end}}
+{{define "head-title"}}{{t "favorites.title"}}{{end}}
+{{define "head-nav"}}{{template "worlds-area-tabs" "favorites"}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
-{{template "crumb" (crumbs worldsPath (t "common.nav.worlds") "" (t "favorites.title"))}}
-<h1>{{t "favorites.title"}}</h1>
-{{template "rail" $}}
+{{template "pagehead" $}}
 <p class="page-intro">{{t "favorites.intro"}}</p>
-{{- with .Deleted}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.deleted" "name" .}}</p>
-</div>
-{{- end}}
-{{- if not .Renamed.IsZero}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{msg .Renamed}}</p>
-</div>
-{{- end}}
-{{- with .Imported}}
-<div class="message message--success" id="done-message" tabindex="-1" autofocus>
-  <p><strong>{{t "common.label.done"}}</strong> {{t "favorites.import.done" "name" .}}</p>
-</div>
-{{- end}}
 {{- /* The list leads; importing one, the rarer task, sits in the rail beside it. */}}
 <div class="split">
 <section class="panel" aria-label="{{t "favorites.title"}}">
@@ -88,7 +73,7 @@
     {{- end}}
   </ul>
   {{- else}}
-  <p class="empty" id="favorites-empty">{{t "favorites.empty"}}</p>
+  {{template "empty" (empty "worlds" (t "favorites.empty") "favorites-empty")}}
   <div class="actions"><a href="{{worldsPath}}">{{t "favorites.empty.link"}}</a></div>
   {{- end}}
 </section>
@@ -100,9 +85,7 @@
   <form method="post" action="{{.ImportPath}}" enctype="multipart/form-data" novalidate>
     {{template "required-note"}}
     {{template "dropzone" .ImportZone}}
-    <div class="actions">
-      <button type="submit" class="button" id="act-favorite-import">{{t "favorites.import.button"}}</button>
-    </div>
+    {{template "form-foot" (formFoot "submit" (t "favorites.import.button") "submitID" "act-favorite-import")}}
   </form>
 </section>
 </div>
@@ -110,4 +93,3 @@
 {{- end}}
 {{- end}}
 
-{{define "page-width"}}{{"measure"}}{{end}}

@@ -1,18 +1,13 @@
 {{define "title"}}{{t "worlds.delete.title" "world" .Page.World.Name}}{{end}}
 
-{{define "rail"}}{{template "world-tabs" .Page.Tabs}}{{end}}
+{{define "head-title"}}{{with .Page}}{{if .Refusal.IsZero}}{{t "worlds.delete.question" "world" .World.Name}}{{else}}{{t "worlds.delete.title" "world" .World.Name}}{{end}}{{end}}{{end}}
+{{define "head-nav"}}{{template "world-tabs" .Page.Tabs}}{{end}}
 
 {{define "content" -}}
 {{with .Page}}
 {{- $refusal := .Refusal}}
-<h1 id="confirm-heading">{{if $refusal.IsZero}}{{t "worlds.delete.question" "world" .World.Name}}{{else}}{{t "worlds.delete.title" "world" .World.Name}}{{end}}</h1>
-{{template "rail" $}}
+{{template "pagehead" $}}
 {{template "summary" .Problems}}
-{{- if not .Error.IsZero}}
-<div class="message message--error" id="action-error" tabindex="-1" autofocus>
-  <p><strong>{{t "common.error.label"}}</strong> {{msg .Error}}</p>
-</div>
-{{- end}}
 {{- if not $refusal.IsZero}}
 <p>{{msg $refusal}}</p>
 <div class="actions"><a href="{{.WorldPath}}">{{t "worlds.back.world" "world" .World.Name}}</a></div>

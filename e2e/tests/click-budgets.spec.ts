@@ -141,7 +141,7 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByRole("link", { name: "World page" }).click();
     await page.getByRole("link", { name: "Clone world" }).click();
     await page.getByRole("button", { name: "Clone world" }).click();
-    await expect(page.locator(".message--success")).toBeVisible(live);
+    await expect(page.locator("#toasts .toast--success")).toBeVisible(live);
     await expectWithin(clicks, 3, "clone");
   });
 
@@ -208,7 +208,7 @@ test.describe("click budgets, with the fake game", () => {
     await page.getByRole("link", { name: "World page" }).click();
     await page.getByRole("navigation", { name: "World pages" }).getByRole("link", { name: "Saves" }).click();
     await page.getByRole("button", { name: "Load next: older.zip" }).click();
-    await expect(page.getByText("The server will load older.zip the next time it starts.")).toBeVisible();
+    await expect(page.locator("#toasts").getByText("The server will load older.zip the next time it starts.")).toBeVisible();
     expect(JSON.parse(readFileSync(join(foreman.dataDir, "worlds", "base", "world.json"), "utf8")).load_save).toBe("older.zip");
     await expectWithin(clicks, 3, "choose an older save");
   });

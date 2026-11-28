@@ -144,7 +144,6 @@
   "worlds.list.all": "Todos los mundos",
   "worlds.list.deleted_gone": "Se borró {name}. No tenía instantáneas, así que no se puede restaurar.",
   "worlds.list.deleted_kept": "Se borró {name}. Sus instantáneas están en «Mundos borrados».",
-  "worlds.list.deleted_link": "Ir a Mundos borrados",
   "worlds.list.empty": "Aún no hay mundos. Importa una carpeta de partidas guardadas o sube un archivo de partida guardada para crear tu primer mundo.",
   "worlds.list.upload_save": "Subir una partida guardada",
   "worlds.list.import": "Importar un mundo",
