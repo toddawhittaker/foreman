@@ -1,6 +1,7 @@
 package web
 
 import (
+	"bufio"
 	"context"
 	"net/url"
 	"strings"
@@ -100,6 +101,41 @@ func TestDoneIsAToastThatTakesNoFocus(t *testing.T) {
 	g.wantMissing("the first load", body, "autofocus", "data-focus-result", "done-message")
 	for _, path := range []string{PathServerResult, PathServer} {
 		g.wantMissing(path, g.get(path), "data-toast", "Foreman took the snapshot")
+	}
+}
+
+// DESIGN 6, "Toasts": Cancel stop answers once its action has ended, so the
+// page that asked often has the cancel's toast by its live stream just
+// before it follows the answer. The load after the admin's own action shows
+// that toast all the same, and the loads after it show none.
+func TestCancelToastShowsAfterItsOwnAction(t *testing.T) {
+	g := newGameRig(t, image21)
+	id := g.newWorld("Base", fixtureNoSA, false)
+	g.startGame(id)
+	if err := g.fake.Join(game.ContainerName(id), "alice"); err != nil {
+		t.Fatal(err)
+	}
+	g.waitPage(`<tr role="row" id="pr-alice">`)
+	g.wantRedirectHome(g.post(gamePath(id, "stop"), url.Values{"countdown": {"120"}}))
+	g.waitPage("Cancel stop")
+
+	resp := g.openEvents(id, true)
+	defer func() { _ = resp.Body.Close() }()
+	events := bufio.NewReader(resp.Body)
+	g.wantRedirectTo(PathServerResult, g.post(gamePath(id, "cancel-stop"), url.Values{}))
+	for {
+		name, data, err := readEvent(t, events)
+		if err != nil {
+			t.Fatalf("the stream ended before the cancel's toast: %v", err)
+		}
+		if name == "toast" && strings.Contains(data, "The stop was canceled.") {
+			break
+		}
+	}
+
+	g.wantContains("the load after Cancel stop", g.get(PathServerResult), "data-toast-key=\"cancelled.", "The stop was canceled.")
+	for _, path := range []string{PathServerResult, PathServer} {
+		g.wantMissing(path, g.get(path), "data-toast", "The stop was canceled.")
 	}
 }
 
