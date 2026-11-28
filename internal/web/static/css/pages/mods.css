@@ -1012,28 +1012,6 @@ ol.plan-steps > li:not(:last-child)::after {
   gap: var(--space-2);
   min-block-size: var(--target-min);
   cursor: pointer;
-  list-style: none;
-}
-
-.plan-panel__list > summary::-webkit-details-marker {
-  display: none;
-}
-
-/* The foldout's orange triangle (DESIGN 7.8), drawn so the bar keeps its
-   flex layout. */
-.plan-panel__list > summary::before {
-  content: "";
-  flex: none;
-  inline-size: 0.5rem;
-  block-size: 0.6rem;
-  margin-inline: var(--space-1);
-  background: var(--color-primary);
-  clip-path: polygon(0 0, 100% 50%, 0 100%);
-  transition: rotate var(--dur-1) var(--ease);
-}
-
-.plan-panel__list[open] > summary::before {
-  rotate: 90deg;
 }
 
 .plan-panel__list[data-wide] > summary {
@@ -1177,12 +1155,6 @@ ol.plan-steps > li:not(:last-child)::after {
 .plan-panel__go .button {
   inline-size: 100%;
   justify-content: center;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .plan-panel__list > summary::before {
-    transition: none;
-  }
 }
 
 .mod-rail > summary::before {

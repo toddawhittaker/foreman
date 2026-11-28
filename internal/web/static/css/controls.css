@@ -19,11 +19,16 @@ fieldset > .check + a {
   justify-self: start;
 }
 
+/* The box sits on the words' first line, and the first line sits where a
+   one-line label's does: centred in the 44 px row. So a label that wraps
+   starts level with its one-line neighbours. */
 .check {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: var(--space-3);
+  box-sizing: border-box;
   min-block-size: var(--target-min);
+  padding-block: max(0px, (var(--target-min) - 1lh) / 2);
   font-weight: 400;
   overflow-wrap: anywhere;
 }
@@ -33,6 +38,10 @@ fieldset > .check + a {
   inline-size: 1.25rem;
   block-size: 1.25rem;
   margin: 0;
+  /* The label's line, so 1lh below is the first line's height. */
+  font: inherit;
+  line-height: inherit;
+  margin-block-start: calc((1lh - 1.25rem) / 2);
   accent-color: var(--color-selected);
 }
 
@@ -111,15 +120,14 @@ fieldset > .check + a {
   outline-offset: -3px;
 }
 
-/* A foldout (DESIGN 7.8): the browser's own triangle in orange, a bold
-   label, no face at rest. Hover fills the row; the side padding and its
+/* A foldout (DESIGN 7.8): a bold label with the disclosure chevron after
+   it, no face at rest. Hover fills the row; the side padding and its
    negative margin keep the words still. 44 px on touch, compact with a
    fine pointer. Only a foldout directly after another gets a line above
    it, so stacked rows (Generate's planets) read as a list. The player
    name in the players table keeps its own look (8.12). */
 .disclosure:not(.player-actions) > summary {
-  display: list-item;
-  list-style-position: inside;
+  display: block;
   min-block-size: var(--target-min);
   padding: var(--space-3) var(--space-1);
   margin-inline: calc(-1 * var(--space-1));
@@ -131,10 +139,53 @@ fieldset > .check + a {
   overflow-wrap: anywhere;
 }
 
-/* Disclosure triangles are quiet too. */
-:is(details, .disclosure:not(.player-actions)) > summary::marker,
+/* Disclosure triangles are quiet too, where a details still shows one. */
+details > summary::marker,
 summary::-webkit-details-marker {
   color: var(--color-text-muted);
+}
+
+/* The disclosure chevron (DESIGN 7.8): one mark for every foldout, menu
+   and disclosure button, drawn from --i-chevron in the muted colour, so
+   orange stays for the primary action, the current place and focus. It
+   points down while closed and up while open. A page may place it, never
+   redraw it. */
+:is(.disclosure, .menu, .menu__langs, .plan-panel__list) > summary {
+  list-style: none;
+}
+
+:is(.disclosure, .menu, .menu__langs, .plan-panel__list) > summary::-webkit-details-marker {
+  display: none;
+}
+
+:is(.disclosure, .menu, .menu__langs, .plan-panel__list) > summary::after {
+  content: "";
+  display: inline-block;
+  flex: none;
+  inline-size: 1rem;
+  block-size: 1rem;
+  vertical-align: -0.1875em;
+  background: var(--color-text-muted);
+  mask: var(--i-chevron) center / contain no-repeat;
+  transform: rotate(90deg);
+  transition: transform var(--dur-2) var(--ease);
+}
+
+:is(.disclosure, .menu, .menu__langs, .plan-panel__list)[open] > summary::after {
+  transform: rotate(-90deg);
+}
+
+/* In a foldout's line of words the chevron keeps a gap from the label. */
+.disclosure:not(.player-actions, .emergency) > summary::after {
+  margin-inline-start: var(--space-2);
+}
+
+/* The chevron is painted through a mask, which forced colours would drop. */
+@media (forced-colors: active) {
+  :is(.disclosure, .menu, .menu__langs, .plan-panel__list) > summary::after {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
 }
 
 @media (hover: hover) {
@@ -271,11 +322,6 @@ input[type="checkbox"]:indeterminate::before {
   input:is([type="checkbox"], [type="radio"])::before {
     content: none;
   }
-}
-
-/* Motion: hover fills and chevrons ease; nothing moves under reduced motion. */
-.disclosure > summary::after {
-  transition: transform var(--dur-2) var(--ease);
 }
 
 /* A ticked row takes the raised face, so a selection reads at a glance. */

@@ -766,8 +766,9 @@ one place across its states and its sibling pages.
 - **The page header** has one shape on every page, so each part sits at one
   place: the breadcrumb (or the context row) 4 px over a 28 px title; the
   page's own buttons at the end of the title's row; under the title the
-  page's tab row or a flow's step bar, 16 px below it; and the first plate
-  16 px under the tabs, so content starts about 190 px from the top of the
+  page's tab row or a flow's step bar, 16 px below it; and the first part
+  drawn under the header 16 px under it, with or without a tab row (a
+  hidden live region or an empty activity block does not count), so content starts about 190 px from the top of the
   window. A page that has a parent (a world's page, a settings page, a
   favorite, the Server view while a world is live) opens with the
   breadcrumb (8.1); a page with none (All worlds, All snapshots, the Server
@@ -837,8 +838,9 @@ one place across its states and its sibling pages.
   has a breadcrumb that leads back.
   - **The tab row** is a 44 px row of underline tabs: `text-muted`, weight
     500, `--space-4` of side padding (none before the first tab), the
-    current one `heading` at weight 600 with a 3 px `selected` underline
-    drawn as a border, so it survives forced colours. Under it a 1 px
+    current one `heading` with a 3 px `selected` underline drawn as a
+    border, so it survives forced colours. It is not bolder, so every tab
+    keeps its place and width on each of its sibling pages. Under it a 1 px
     `line-strong` rule runs the column's full width. A tab under the pointer
     takes `heading`.
   - **Below 40rem** the Server, Worlds and world rows are an even grid of
@@ -1331,7 +1333,10 @@ the block padding is `--space-2` so a two-line label is not cramped.
   colours gets the native control back, which draws the mixed state itself. A segment's or a tab's radio is
   hidden by its own rule. The
   input sits inside its `label`, and the label is a flex row with
-  `min-block-size: var(--target-min)`, so the whole row is the target. The
+  `min-block-size: var(--target-min)`, so the whole row is the target.
+  The box sits on the words' first line, and that line sits where a
+  one-line label's does, so a label that wraps starts level with its
+  neighbours. The
   box styling above never applies to them, even inside a
   `div.field`: the `.field` rule excludes `[type="checkbox"]` and
   `[type="radio"]`, so the input stays 1.25rem square.
@@ -2016,10 +2021,12 @@ it a card or a plate alike; the class is `card` or `panel`.
   it is told apart by more than colour. A segment with a count shows it
   inside. Focus draws the usual ring 1 px outside the segment.
 - **Foldouts** (`details.disclosure`). One style for every foldout; the
-  class stays `disclosure`. The summary is a `list-item` with the browser's own triangle (`::marker`) at
-  its start, coloured `text-muted` so orange stays for the primary action,
-  the current place and focus: it points ahead when closed and down when
-  open. The label is `heading` at weight 600, with no face, border or
+  class stays `disclosure`. The summary is the label followed by the
+  disclosure chevron, the one arrow every disclosure, menu and disclosure
+  button draws (`controls.css`, from `--i-chevron`, 16 px, in `text-muted`,
+  so orange stays for the primary action, the current place and focus):
+  it points down when closed and up when open. No disclosure
+  shows the browser's own triangle. The label is `heading` at weight 600, with no face, border or
   shadow at rest. Under a pointer that can hover (`@media (hover: hover)`) the row fills with
   `secondary-hover` at `--radius`; its side padding of `--space-1` and a matching negative
   margin keep the words still. Focus keeps the normal ring. With a fine
@@ -2029,7 +2036,7 @@ it a card or a plate alike; the class is `card` or `panel`.
   so stacked rows such as Generate's planets and the raw settings read as
   a list. "Emergency actions" is the exception: a small framed menu button
   whose opened area is red (section 6). The plan list's summary on the mod
-  portal keeps its 44 px bar and draws its own triangle, without the
+  portal keeps its 44 px bar and the same chevron, without the
   compact size or the hover fill. Used for "Or start anyway" (7.4), the steps that were not
   run (7.6), "N other mods stay as they are" and the upload and replace
   forms (8.11), "Replace the account" (8.11), the version not in the list
@@ -3575,7 +3582,8 @@ made on one sub-page are kept in the tab's session storage and put back
 on the next, so one "Preview changes" covers every section. The foot
 bar's note counts them ("3 unsaved changes, kept while you move between
 sections.", with an orange dot), and the segmented control marks each
-sub-page that holds one with a dot. Saving or Cancel drops the draft. Without
+sub-page that holds one with a dot in its top end corner, inside the
+segment's padding, so the mark moves no segment. Saving or Cancel drops the draft. Without
 script each sub-page saves on its own.
 
 **The form** (`GET /worlds/{id}/settings`) is one `form.panel` of
